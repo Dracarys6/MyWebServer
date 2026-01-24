@@ -1,0 +1,10 @@
+# 完全匹配你的 Task 协程类代码风格
+BasedOnStyle: Google
+Language: Cpp
+Standard: c++20
+
+# 核心缩进/换行（和你的代码完全对齐）
+IndentWidth: 4                # 4空格缩进（匹配你的代码）
+TabWidth: 4
+ColumnLimit: 100              # 行宽足够，避免你的长行被强制换行
+LineEnding: LF                # macOS/Linux 换行符

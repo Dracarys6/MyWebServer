@@ -1,18 +1,12 @@
-# 项目根目录的 .clangd 文件（M1 macOS + Clang 17.0.0 专属）
 CompileFlags:
-  # 核心编译标志（适配 Clang 17 + C++20 + M1 架构）
   Add:
-    - -std=c++20                # 启用 C++20（协程原生支持）
+    - -std=c++20                #
+     - -Iinclude
     - -isysroot/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk  # M1 系统头文件路径
     - -pthread                  # 线程支持（WebServer 必备）
     - -Wall                     # 开启基础警告
     - -Wextra                   # 开启额外警告
-  # 移除冲突/无效的标志
-  Remove:
-    - -std=c++17                # 覆盖旧标准，确保用 C++20
-    - -fcoroutines-ts           # Clang 17 已废弃该参数，强制移除
-    - -fcoroutines              # GCC 协程参数，避免干扰
-
+    
 # 诊断/检查配置
 Diagnostics:
   UnusedIncludes: Strict        # 严格检查未使用的头文件

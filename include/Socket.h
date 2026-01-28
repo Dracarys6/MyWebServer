@@ -4,9 +4,11 @@
 
 #include <string>
 
-// Socket类: 封装fd,提供RAII机制
+/**
+ * @brief 封装Socket的fd,提供RAII机制
+ */
 class Socket {
-    public:
+public:
     // 默认构造: 创造一个TCP Socket
     Socket();
 
@@ -41,6 +43,6 @@ class Socket {
     // 获取原始fd (仅用于 epoll注册)
     int Fd() const { return fd_; }
 
-    private:
+private:
     int fd_;
 };

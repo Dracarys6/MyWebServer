@@ -2,8 +2,10 @@
 #include <coroutine>
 #include <exception>
 
-// Task: 协程函数的返回类型
-// C++20 协程任何使用 co_await/co_return 的函数,其返回类型必须包含名为 promise_type的嵌套类型
+/**
+ * @brief Task: 协程函数的返回类型
+ *  C++20 协程任何使用 co_await/co_return 的函数,其返回类型必须包含名为 promise_type的嵌套类型
+ */
 template <typename T = void>
 struct Task {
     // 1. 嵌套的promise_type(C++20强制要求的名称)
@@ -66,7 +68,9 @@ struct Task {
     }
 };
 
-// void特化版本
+/**
+ * @brief void特化版本
+ */
 template <>
 struct Task<void> {
     struct promise_type {

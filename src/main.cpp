@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Result.h"
+#include "Result.h"  //Task
 #include "Scheduler.h"
 #include "Socket.h"
 
@@ -14,7 +14,7 @@ Task<void> HandleClient(Socket client) {
         std::cout << "Waiting for data..." << std::endl;
         ssize_t n = co_await client.Read(buf, sizeof(buf));
         if (n > 0) {
-            buf[0] = '\0';
+            buf[n] = '\0';  // 末尾加字符串结束符
             std::cout << "Recv: " << buf << std::endl;
             // 回显 暂时用同步write
             write(client.Fd(), buf, n);
@@ -22,7 +22,7 @@ Task<void> HandleClient(Socket client) {
             std::cout << "Client closed." << std::endl;
             break;
         } else {
-            std::cout << "Read error " << std::endl;
+            std::cout << "Read error." << std::endl;
             break;
         }
     }
@@ -41,6 +41,7 @@ Task<void> Acceptor(Socket& server) {
             client.SetNonBlocking();
             // 启动处理协程
             HandleClient(std::move(client));
+            // 这一行结束,Task<void>临时对象被析构了
         }
     }
 }
@@ -49,7 +50,7 @@ int main() {
     Socket server;
     server.SetReuseAddr();
     server.SetNonBlocking();
-    server.Bind("0.0.0.0", 8080);
+    server.Bind("127.0.0.1", 8080);
     server.Listen();
     // 启动 Acceptor 协程
     Acceptor(server);

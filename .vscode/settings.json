@@ -1,6 +1,9 @@
 {
     "cSpell.words": [
         "Epoll",
+        "EPOLLET",
+        "EPOLLIN",
+        "EPOLLOUT",
         "fcoroutines",
         "mysqlclient",
         "pthread"

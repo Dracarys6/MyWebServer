@@ -66,7 +66,7 @@ public:
 
             ssize_t await_resume() {
                 // 醒来时,说明 epoll 通知可读了,立即执行非阻塞 read
-                // 注意: 这里没有循环读，,只读一次。
+                // 注意: 这里没有循环读,只读一次。
                 // 如果是 ET 模式,用户层协程最好用循环读,或者我们在这里循环读完。
                 return ::read(fd, buf, len);
             }

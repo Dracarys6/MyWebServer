@@ -79,7 +79,7 @@ struct Task<void> {
             return Task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
         std::suspend_never initial_suspend() { return {}; }
-        std::suspend_always final_suspend() noexcept { return {}; }
+        std::suspend_never final_suspend() noexcept { return {}; }
         void return_void() {}
         void unhandled_exception() { exception_ptr = std::current_exception(); }
     };
@@ -100,7 +100,7 @@ struct Task<void> {
         return *this;
     }
     ~Task() {
-        if (handle) handle.destroy();
+        // if (handle) handle.destroy();
     }
     void get_result() {
         if (handle.promise().exception_ptr) {

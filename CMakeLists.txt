@@ -17,11 +17,10 @@ set(SOURCES
 ${PROJECT_SOURCE_DIR}/src/main.cpp
 ${PROJECT_SOURCE_DIR}/src/Socket.cpp
 ${PROJECT_SOURCE_DIR}/src/Epoll.cpp
-# ...
 )
 
 # 链接 MySQL库
-# link_libraries(mysqlcilent)
+# link_libraries(mysqlclient)
 
 #添加可执行文件 (第一个参数是可执行程序名，第二个是源文件列表)
 add_executable(server ${SOURCES})

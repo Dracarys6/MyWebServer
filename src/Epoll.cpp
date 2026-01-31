@@ -9,13 +9,13 @@ void Epoll::Control(int fd, int events, int op) {
     }
 }
 
-void Epoll::Add(int fd, uint32_t events) {
-    // 默认加上 EPOLLET(边缘触发)
-    Control(fd, events | EPOLLET, EPOLL_CTL_ADD);
-}
+// Co0ntrol之Add 默认加上 EPOLLET(边缘触发)
+void Epoll::Add(int fd, uint32_t events) { Control(fd, events | EPOLLET, EPOLL_CTL_ADD); }
 
+// Control之Mod
 void Epoll::Mod(int fd, uint32_t events) { Control(fd, events | EPOLLET, EPOLL_CTL_MOD); }
 
+// Control之Del
 void Epoll::Del(int fd) { Control(fd, 0, EPOLL_CTL_DEL); }
 
 std::vector<epoll_event> Epoll::Wait(int timeout) {

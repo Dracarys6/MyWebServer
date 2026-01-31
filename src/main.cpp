@@ -1,72 +1,59 @@
-#include <exception>
 #include <iostream>
 
-#include "Epoll.h"
 #include "Result.h"
+#include "Scheduler.h"
 #include "Socket.h"
 
-// 一个简单的协程
-Task<int> simple_coroutinue() {
-    std::cout << "==========1. Coroutinue started !!!==========" << std::endl;
-    co_return 42;
+// 处理客户端连接的协程
+Task<void> HandleClient(Socket client) {
+    // 必须用 std::move 接管 client,否则析构会关闭fd
+    char buf[1024];
+    while (true) {
+        // 1. 等待数据(挂起)
+        // 当有数据时,resume执行read,返回读取字节数
+        std::cout << "Waiting for data..." << std::endl;
+        ssize_t n = co_await client.Read(buf, sizeof(buf));
+        if (n > 0) {
+            buf[0] = '\0';
+            std::cout << "Recv: " << buf << std::endl;
+            // 回显 暂时用同步write
+            write(client.Fd(), buf, n);
+        } else if (n == 0) {
+            std::cout << "Client closed." << std::endl;
+            break;
+        } else {
+            std::cout << "Read error " << std::endl;
+            break;
+        }
+    }
+}
+
+// 接收连接的协程
+Task<void> Acceptor(Socket& server) {
+    std::cout << "Acceptor started." << std::endl;
+    while (true) {
+        auto awaiter = server.Read(nullptr, 0);  // 只要等待事件,不读数据
+        co_await awaiter;
+        // 醒来说明有连接
+        Socket client = server.Accept();
+        if (client.Fd() >= 0) {
+            std::cout << "New Connection: " << client.Fd() << std::endl;
+            client.SetNonBlocking();
+            // 启动处理协程
+            HandleClient(std::move(client));
+        }
+    }
 }
 
 int main() {
-    std::cout << "==========0. Main started !!!================" << std::endl;
-    // 调用协程
-    Task<int> task = simple_coroutinue();
-    try {
-        Socket server;
-        server.SetReuseAddr();
-        // 1.socket设置为非阻塞
-        server.SetNonBlocking();
-        server.Bind("127.0.0.1", 8080);
-        server.Listen();
-
-        Epoll epoll;
-        // 2.将socket注册到epoll,监听EPOLLIN
-        epoll.Add(server.Fd(), EPOLLIN);
-
-        while (true) {
-            // 3.阻塞等待事件,直到有动静
-            auto events = epoll.Wait();
-            for (auto& event : events) {
-                if (event.data.fd == server.Fd()) {
-                    // CASE A: Server Socket 有动静 -> 说明有新连接！
-                    Socket client = server.Accept();
-                    if (client.Fd() == -1) continue;
-                    std::cout << "New Client Connected: " << client.Fd() << std::endl;
-
-                    // 设为非阻塞并添加到Epoll
-                    client.SetNonBlocking();
-                    epoll.Add(client.Fd(), EPOLLIN);
-                    // 注意：Socket client 在这里析构会关闭 fd！
-                    // 为了演示，我们需要把 client 的 fd "偷" 出来，避免被析构关闭
-                    // 在正式项目中，我们会把 client 移动到一个 Map 或者 Session 对象里保存
-                    // 这里我们暂时用一种 Hack 的方式：
-                    // Socket 暂时没办法"释放"所有权而不析构 fd (除了移动)。
-                    // 今天的练习有点尴尬，因为我们没有 Session 类来持有 client。
-                    //
-                    // *** 临时解决方案 ***：
-                    // 我们为了演示，只能让 client 析构时不 close。
-                    // 但 Socket 类不支持。
-                    // 所以：今天的测试代码只能演示 Accept，演示完 client 析构连接就断了。
-                    // 只要你看到 "New Client Connected" 且没有崩溃，就算成功。
-                } else {
-                    // CASE B: Client Socket 有动静 -> 说明发数据来了
-                    // 今天先不处理读写，只打印
-                    std::cout << "Data received from client: " << event.data.fd << std::endl;
-                    // 如果读缓冲区空了，epoll 下次还会通知（如果不是 ET）
-                    // 但我们用了 ET，所以如果不读完，下次就不通知了。
-                }
-            }
-        }
-    } catch (std::exception& e) {
-        std::cerr << "Fatal Error: " << e.what() << std::endl;
-    }
-    std::cout << "==========2. Back to main !!!================" << std::endl;
-    std::cout << "==========3. Result: " << task.get_result()
-              << " !!!==================" << std::endl;
-    std::cout << "==========4. Main ended !!!==================" << std::endl;
+    Socket server;
+    server.SetReuseAddr();
+    server.SetNonBlocking();
+    server.Bind("0.0.0.0", 8080);
+    server.Listen();
+    // 启动 Acceptor 协程
+    Acceptor(server);
+    // 启动调度器循环
+    Scheduler::Get().Loop();
     return 0;
 }

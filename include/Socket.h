@@ -56,11 +56,11 @@ public:
 
             void await_suspend(std::coroutine_handle<> hd) {
                 // 注册 EPOLLIN
-                Scheduler::Get().WaitFor(fd, hd);
+                t_loop->WaitFor(fd, hd);
                 try {
-                    Scheduler::Get().GetEpoll().Mod(fd, EPOLLIN | EPOLLET);
+                    t_loop->GetEpoll().Mod(fd, EPOLLIN | EPOLLET);
                 } catch (...) {
-                    Scheduler::Get().GetEpoll().Add(fd, EPOLLIN | EPOLLET);
+                    t_loop->GetEpoll().Add(fd, EPOLLIN | EPOLLET);
                 }
             }
 

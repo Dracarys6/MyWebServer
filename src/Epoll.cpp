@@ -9,7 +9,7 @@ void Epoll::Control(int fd, int events, int op) {
     }
 }
 
-// Co0ntrol之Add 默认加上 EPOLLET(边缘触发)
+// Control之Add 默认加上 EPOLLET(边缘触发)
 void Epoll::Add(int fd, uint32_t events) { Control(fd, events | EPOLLET, EPOLL_CTL_ADD); }
 
 // Control之Mod

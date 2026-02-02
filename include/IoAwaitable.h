@@ -5,7 +5,7 @@
 #include <cerrno>
 #include <coroutine>
 
-#include "Scheduler.h"
+#include "EventLoop.h"
 
 /**
  * @brief 等待体：用于 co_await socket.read()
@@ -23,18 +23,19 @@ struct IoAwaitable {
     // 2. 挂起时的操作
     void await_suspend(std::coroutine_handle<> hd) {
         // 将 fd 和当前协程句柄 hd 注册到调度器
-        Scheduler::Get().WaitFor(fd, hd);
+        if (t_loop) {
+            t_loop->WaitFor(fd, hd);
 
-        // 将 fd 注册到 Epoll
-        try {
-            Scheduler::Get().GetEpoll().Mod(fd, event_type | EPOLLET);
-        } catch (...) {
-            // 如果时第一次加,Mod 会失败,改为 Add
-            Scheduler::Get().GetEpoll().Add(fd, event_type | EPOLLET);
+            // 将 fd 注册到 Epoll
+            try {
+                t_loop->GetEpoll().Mod(fd, event_type | EPOLLET);
+            } catch (...) {
+                // 如果时第一次加,Mod 会失败,改为 Add
+                t_loop->GetEpoll().Add(fd, event_type | EPOLLET);
+            }
         }
     }
-
-    // 3. 唤醒后的操作 
+    // 3. 唤醒后的操作
     // 这里我们不做实际的 read/write，只返回 io 结果的占位符
     // 或者，更常见的做法：await_resume 里不做 IO，
     // 而是让协程醒来后自己在 Socket 方法里做 IO。

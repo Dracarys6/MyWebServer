@@ -1,23 +1,26 @@
 #pragma once
 #include <coroutine>
+#include <functional>
 #include <iostream>
 #include <map>
+#include <thread>
 
 #include "Epoll.h"
 
 /**
- * @brief 调度器（单例模式）
+ * @brief EventLoop: 每个线程持有一个
  * 负责：
  * 1. 运行 Epoll Wait 循环
  * 2. 存储 <fd, 协程句柄> 的映射
  * 3. 当 Epoll 有事件时,恢复对应的协程
  */
-class Scheduler {
+class EventLoop {
 public:
-    static Scheduler& Get() {
-        static Scheduler instance;  // 局部静态变量，第一次调用时初始化
-        return instance;
-    }
+    EventLoop() = default;
+
+    // 禁止拷贝
+    EventLoop(const EventLoop&) = delete;
+    EventLoop& operator=(const EventLoop&) = delete;
 
     Epoll& GetEpoll() { return epoll_; }
 
@@ -30,8 +33,8 @@ public:
 
     // 核心循环
     void Loop() {
-        std::cout << "Scheduler Loop Started..." << std::endl;
-        while (true) {
+        std::cout << "EventLoop Started in thread " << std::this_thread::get_id() << std::endl;
+        while (!stop_) {
             auto events = epoll_.Wait(-1);  // 阻塞等待
             for (auto& ev : events) {
                 int fd = ev.data.fd;
@@ -46,9 +49,13 @@ public:
         }
     }
 
+    void Stop() { stop_ = true; }
+
 private:
-    Scheduler() = default;
     Epoll epoll_;
     // 存储 fd -> 挂起的协程
     std::map<int, std::coroutine_handle<>> waiting_coroutines_;
+    bool stop_ = false;
 };
+
+extern thread_local EventLoop* t_loop;

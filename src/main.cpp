@@ -1,8 +1,10 @@
 #include <iostream>
 
+#include "EventLoop.h"
 #include "Result.h"  //Task
-#include "Scheduler.h"
 #include "Socket.h"
+
+thread_local EventLoop* t_loop = nullptr;  // 线程局部变量,每个线程有一份独立的,全局可访问
 
 // 处理客户端连接的协程
 Task<void> HandleClient(Socket client) {
@@ -33,8 +35,8 @@ Task<void> Acceptor(Socket& server) {
     std::cout << "Acceptor started." << std::endl;
     while (true) {
         auto awaiter = server.Read(nullptr, 0);  // 只要等待事件,不读数据
-        co_await awaiter;
-        // 醒来说明有连接
+        co_await awaiter;  // 挂起 awaiter是封装的可等待对象(read版)
+        // 从 co_await 醒来(调度器调用resume)说明有连接
         Socket client = server.Accept();
         if (client.Fd() >= 0) {
             std::cout << "New Connection: " << client.Fd() << std::endl;
@@ -50,11 +52,16 @@ int main() {
     Socket server;
     server.SetReuseAddr();
     server.SetNonBlocking();
-    server.Bind("127.0.0.1", 8080);
+    server.Bind("0.0.0.0", 8080);
     server.Listen();
-    // 启动 Acceptor 协程
+
+    // 1.创建主线程的 Loop
+    EventLoop main_loop;
+    // 2.设置 TLS 指针,让该线程内的协程能找到他
+    t_loop = &main_loop;
+    // 3.启动 Acceptor 协程
     Acceptor(server);
-    // 启动调度器循环
-    Scheduler::Get().Loop();
+    // 4.运行 Loop
+    main_loop.Loop();
     return 0;
 }

@@ -1,11 +1,14 @@
 {
     "cSpell.words": [
+        "docs",
+        "dylib",
         "Epoll",
         "EPOLLET",
         "EPOLLIN",
         "EPOLLOUT",
         "fcoroutines",
         "mysqlclient",
-        "pthread"
+        "pthread",
+        "smod"
     ]
 }

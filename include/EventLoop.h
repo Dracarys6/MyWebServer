@@ -1,9 +1,13 @@
 #pragma once
+#include <sys/eventfd.h>
+
 #include <coroutine>
 #include <functional>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 #include "Epoll.h"
 
@@ -16,7 +20,15 @@
  */
 class EventLoop {
 public:
-    EventLoop() = default;
+    EventLoop() {
+        wakeup_fd_ = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);  // 非阻塞和执行时自动关闭
+        if (wakeup_fd_ == -1) {
+            perror("eventfd error");
+            exit(1);
+        }
+    }
+
+    ~EventLoop() { close(wakeup_fd_); }
 
     // 禁止拷贝
     EventLoop(const EventLoop&) = delete;
@@ -32,30 +44,38 @@ public:
     }
 
     // 核心循环
-    void Loop() {
-        std::cout << "EventLoop Started in thread " << std::this_thread::get_id() << std::endl;
-        while (!stop_) {
-            auto events = epoll_.Wait(-1);  // 阻塞等待
-            for (auto& ev : events) {
-                int fd = ev.data.fd;
-                // 查找在这个 fd 上等待的协程
-                if (auto it = waiting_coroutines_.find(fd);
-                    it != waiting_coroutines_.end()) {  // C++17 if初始化
-                    auto handle = it->second;
-                    waiting_coroutines_.erase(it);
-                    handle.resume();  // 唤醒协程
-                }
-            }
-        }
-    }
+    void Loop();
 
     void Stop() { stop_ = true; }
 
+    // 添加任务到队列,并唤醒 Loop
+    void RunInLoop(std::function<void()> task);
+
+    // 唤醒 epoll_wait
+    void WakeUp() {
+        uint64_t one{1UL};
+        write(wakeup_fd_, &one, sizeof(one));
+    }
+
 private:
+    void ExecuteTasks() {
+        std::vector<std::function<void()>> temp_tasks;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            temp_tasks.swap(tasks_);  // 快速交换,减小锁粒度
+        }
+        for (auto& task : temp_tasks) {
+            task();
+        }
+    }
+
     Epoll epoll_;
     // 存储 fd -> 挂起的协程
     std::map<int, std::coroutine_handle<>> waiting_coroutines_;
-    bool stop_ = false;
+    bool stop_{false};
+    int wakeup_fd_;
+    std::mutex mutex_;
+    std::vector<std::function<void()>> tasks_;
 };
 
-extern thread_local EventLoop* t_loop;
+extern thread_local EventLoop* t_loop;  // TLS指针,要写在EventLoop定义之后,不然会报错

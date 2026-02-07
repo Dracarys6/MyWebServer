@@ -6,21 +6,22 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 添加头文件查找路径（你的原有配置，保留）
+# 添加头文件查找路径
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-# 手动指定要编译的源文件（你的原有配置，保留）
+# 手动指定要编译的源文件
 set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/main.cpp
     ${PROJECT_SOURCE_DIR}/src/Socket.cpp
     ${PROJECT_SOURCE_DIR}/src/Epoll.cpp
     ${PROJECT_SOURCE_DIR}/src/EventLoop.cpp
+    ${PROJECT_SOURCE_DIR}/src/Buffer.cpp
 )
 
 # 先定义可执行目标（必须在前）
 add_executable(server ${SOURCES})
 
-# 再对目标配置编译选项（优先级最高，覆盖全局FLAGS）
+# 再对目标配置编译选项（覆盖全局FLAGS）
 # 调试阶段核心：-O0 关闭优化 + -g 调试信息，必选！
 target_compile_options(server PRIVATE
     -g            # 调试信息，gdb必备

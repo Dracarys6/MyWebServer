@@ -12,51 +12,10 @@
 #include <stdexcept>
 #include <string>
 
-Socket::Socket() {
-    fd_ = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd_ == -1) {
-        throw std::runtime_error("Socket create error: " + std::string(strerror(errno)));
-    }
-}
-
-Socket::Socket(int fd) {
-    fd_ = fd;
-    if (fd_ == -1) {
-        throw std::runtime_error("Socket create error: " + std::string(strerror(errno)));
-    }
-}
-
-Socket::~Socket() {
-    if (fd_ != -1) {
-        close(fd_);
-        fd_ = -1;
-    }
-}
-
-// 移动构造
-Socket::Socket(Socket&& other) noexcept {
-    if (other.fd_ != -1) {
-        fd_ = other.fd_;
-        other.fd_ = -1;
-    }
-}
-
-// 移动赋值
-Socket& Socket::operator=(Socket&& other) noexcept {
-    if (this != &other) {
-        if (other.fd_ != -1) {
-            if (fd_ != -1) close(fd_);  // 释放当前资源
-            fd_ = other.fd_;            // 接管新资源
-            other.fd_ = -1;
-        }
-    }
-    return *this;
-}
-
 void Socket::Bind(const std::string& ip, const uint16_t port) {
     sockaddr_in addr{};  // sockaddr_in: ipv4专用地址结构体
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);                                 // 主机字节序 -> 网络字节序
+    addr.sin_port = htons(port);  // 主机字节序 -> 网络字节序
     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) == -1) {  // ip地址 -> 网络字节序
         throw std::runtime_error("Invalid IP: " + ip);
     }

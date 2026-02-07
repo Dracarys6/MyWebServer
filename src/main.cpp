@@ -1,10 +1,10 @@
 #include <iostream>
 
+#include "Buffer.h"
 #include "EventLoop.h"
 #include "Result.h"
 #include "Socket.h"
 #include "Worker.h"
-
 thread_local EventLoop* t_loop = nullptr;  // 线程局部变量,每个线程有一份独立的,全局可访问
 std::vector<Worker*> workers;              // 线程池
 
@@ -73,6 +73,9 @@ Task<void> Acceptor(Socket& server) {
 }
 
 int main() {
+    Buffer buffer;  // 测试Buffer
+    buffer.Append("Hello World!");
+    std::cout << "ReadableBytes: " << buffer.ReadableBytes() << std::endl;
     // 启动 4 个 Worker
     for (int i = 0; i < 4; ++i) {
         workers.push_back(new Worker());

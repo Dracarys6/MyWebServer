@@ -13,21 +13,52 @@
 class Socket {
 public:
     // 默认构造: 创造一个TCP Socket
-    Socket();
+    Socket() {
+        fd_ = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd_ == -1) {
+            throw std::runtime_error("Socket create error: " + std::string(strerror(errno)));
+        }
+    }
 
     // 包装构造: 接管已有的fd
-    explicit Socket(int fd);
+    explicit Socket(int fd) {
+        fd_ = fd;
+        if (fd_ == -1) {
+            throw std::runtime_error("Socket create error: " + std::string(strerror(errno)));
+        }
+    }
 
     // 析构: 自动close fd
-    ~Socket();
+    ~Socket() noexcept {
+        if (fd_ != -1) {
+            close(fd_);
+            fd_ = -1;
+        }
+    }
 
     // 禁止拷贝
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;
 
-    // 允许移动
-    Socket(Socket&& other) noexcept;
-    Socket& operator=(Socket&& other) noexcept;
+    // 移动构造
+    Socket(Socket&& other) noexcept {
+        if (other.fd_ != -1) {
+            fd_ = other.fd_;
+            other.fd_ = -1;
+        }
+    }
+
+    // 移动赋值
+    Socket& operator=(Socket&& other) noexcept {
+        if (this != &other) {
+            if (other.fd_ != -1) {
+                if (fd_ != -1) close(fd_);  // 释放当前资源
+                fd_ = other.fd_;            // 接管新资源
+                other.fd_ = -1;
+            }
+        }
+        return *this;
+    }
 
     // 网络操作封装
     void Bind(const std::string& ip, const uint16_t port);

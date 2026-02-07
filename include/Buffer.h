@@ -33,7 +33,7 @@ public:
 
     // 返回可读数据的起始指针
     const char* Peek() const {
-        return begin() + readerIndex_;  // 等价于 &buffer_[readerIndex] ?
+        return begin() + readerIndex_;  // 等价于 &buffer_[readerIndex_]
     }
 
     // 取出 len 长度的数据(移动 readerIndex)

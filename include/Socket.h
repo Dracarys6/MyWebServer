@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "Buffer.h"
 #include "IoAwaitable.h"
 
 /**
@@ -76,33 +77,38 @@ public:
     void SetNonBlocking();  // 设置非阻塞
     void SetReuseAddr();    // 设置地址复用
 
-    auto Read(char* buf, size_t len) {
+    auto Read(Buffer& buffer) {
         // 定义内部结构体来实现 Read 的 Awaitable
         struct ReadAwaitable {
             int fd;
-            char* buf;
-            size_t len;
+            Buffer& buf;
 
             bool await_ready() { return false; }  // 总是挂起
 
             void await_suspend(std::coroutine_handle<> hd) {
-                // 注册 EPOLLIN
-                t_loop->WaitFor(fd, hd);
-                try {
-                    t_loop->GetEpoll().Mod(fd, EPOLLIN | EPOLLET);
-                } catch (...) {
-                    t_loop->GetEpoll().Add(fd, EPOLLIN | EPOLLET);
+                // 注册 EPOLLIN | EPOLLET
+                if (t_loop) {
+                    t_loop->WaitFor(fd, hd);
+                    try {
+                        t_loop->GetEpoll().Mod(fd, EPOLLIN | EPOLLET);
+                    } catch (...) {
+                        t_loop->GetEpoll().Add(fd, EPOLLIN | EPOLLET);
+                    }
                 }
             }
 
             ssize_t await_resume() {
-                // 醒来时,说明 epoll 通知可读了,立即执行非阻塞 read
-                // 注意: 这里没有循环读,只读一次。
-                // 如果是 ET 模式,用户层协程最好用循环读,或者我们在这里循环读完。
-                return ::read(fd, buf, len);
+                // 使用 Buffer::ReadFd 进行分散读
+                int savedErrno = 0;
+                ssize_t n = buf.ReadFd(fd, &savedErrno);
+                if (n < 0 && savedErrno == EAGAIN) {
+                    // ET 模式下没数据了,不算错
+                    return 0;
+                }
+                return n;
             }
         };
-        return ReadAwaitable{fd_, buf, len};
+        return ReadAwaitable{fd_, buffer};
     }
 
     // todo: 待实现封装 Write 方法

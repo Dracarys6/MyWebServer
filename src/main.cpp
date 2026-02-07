@@ -1,34 +1,74 @@
 #include <iostream>
+#include <sstream>
 
 #include "Buffer.h"
 #include "EventLoop.h"
 #include "Result.h"
 #include "Socket.h"
 #include "Worker.h"
+
 thread_local EventLoop* t_loop = nullptr;  // 线程局部变量,每个线程有一份独立的,全局可访问
 std::vector<Worker*> workers;              // 线程池
+
+// 简单的HTTP解析函数
+void ParseAndPrintHttp(Buffer& buffer) {
+    // 1. 查找HTTP 头部结束标志 "\r\n\r\n"
+    const char* crlf = "\r\n\r\n";
+    // std::search 在buffer中查找子串
+    const char* end =
+            std::search(buffer.Peek(), buffer.Peek() + buffer.ReadableBytes(), crlf, crlf + 4);
+    if (end == buffer.Peek() + buffer.ReadableBytes()) {
+        // 没找到完整的头,说明数据还没收全,直接返回等下一次
+        return;
+    }
+
+    // 2. 转换为字符串打印
+    std::string request(buffer.Peek(), end + 4);  // +4 把 \r\n\r\n 也带上
+    std::cout << "========= HTTP REQUEST =========" << std::endl;
+    std::cout << request << std::endl;
+    std::cout << "================================" << std::endl;
+
+    // 3. 解析第一行(Request Line)
+    // 将 HTTP 请求首行按空格分割,>> 遇到空格 / 换行 / 制表符终止
+    std::stringstream ss(request);
+    std::string method, url, version;
+    ss >> method >> url >> version;
+
+    std::cout << "Method: " << method << ", URL: " << url << std::endl;
+
+    // 4. 清空缓冲区(模拟处理完毕)
+    // 实际项目中,这里应该构建 Response
+    buffer.RetrieveAll();
+}
 
 // 处理客户端连接的协程
 Task<void> HandleClient(Socket client) {
     // 必须用 std::move 接管 client,否则析构会关闭fd
-    char buf[1024];
+    Buffer readBuffer;
     while (true) {
-        // 1. 等待数据(挂起)
-        // 当有数据时,resume执行read,返回读取字节数
-        std::cout << "Waiting for data..." << std::endl;
-        ssize_t n = co_await client.Read(buf, sizeof(buf));
+        // 1. 协程挂起,等待数据读入 Buffer
+        ssize_t n = co_await client.Read(readBuffer);
         if (n > 0) {
-            buf[n] = '\0';  // 末尾加字符串结束符
-            std::cout << "Recv: " << buf << std::endl;
-            // 回显 暂时用同步write
-            write(client.Fd(), buf, n);
+            // 收到数据了,尝试解析
+            ParseAndPrintHttp(readBuffer);
+            // 简单响应一下
+            std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 15\r\n\r\nHello WebServer";
+            write(client.Fd(), response.c_str(), response.length());
+            // HTTP 短连接默认读完就关,长连接则continue,这里演示短连接
+            break;
         } else if (n == 0) {
-            std::cout << "Client closed." << std::endl;
+            // 对端关闭或 EAGAIN (在 ReadFd 里我们把 EAGAIN 处理为 return 0 了吗？
+            // 注意：ReadFd 返回 -1 且 errno=EAGAIN 时，我们上一段代码是 return 0
+            // 但如果是对端关闭 (EOF)，read 也会返回 0。
+            // 这是一个歧义点。
+
+            // 修正建议：让 Socket::Read 在 EAGAIN 时返回 -2，EOF 返回 0。
+            // 或者简单点：
+            // 假设我们只处理一次请求。
             break;
         } else {
-            std::cout << "Read error." << std::endl;
             break;
-        }
+        }  // 协程结束，Task 析构，client 析构，连接关闭。
     }
 }
 
@@ -37,8 +77,9 @@ Task<void> Acceptor(Socket& server) {
     int next_worker{0};
     std::cout << "Acceptor started." << std::endl;
     while (true) {
-        auto awaiter = server.Read(nullptr, 0);  // 只要等待事件,不读数据
-        co_await awaiter;  // 挂起 awaiter是封装的可等待对象(read版)
+        Buffer buf;
+        auto awaiter = server.Read(buf);  // 只要等待事件,不读数据
+        co_await awaiter;                 // 挂起 awaiter是封装的可等待对象(read版)
         // 从 co_await 醒来(调度器EventLoop调用resume)说明有连接
         Socket client = server.Accept();
         if (client.Fd() >= 0) {
@@ -73,9 +114,6 @@ Task<void> Acceptor(Socket& server) {
 }
 
 int main() {
-    Buffer buffer;  // 测试Buffer
-    buffer.Append("Hello World!");
-    std::cout << "ReadableBytes: " << buffer.ReadableBytes() << std::endl;
     // 启动 4 个 Worker
     for (int i = 0; i < 4; ++i) {
         workers.push_back(new Worker());

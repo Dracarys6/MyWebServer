@@ -41,7 +41,7 @@ private:
     // http报文
     bool ParseRequestLine(const std::string& line);
     void ParseHeaders(const std::string& line);
-    bool ParseBody(Buffer& buf);
+    void ParseBody(Buffer& buf);
 
     void ParsePath() { return; }
 

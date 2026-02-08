@@ -17,8 +17,8 @@
  */
 class Buffer {
 public:
-    static const size_t kCheapPrepend{8UL};  // 前缀头
-    static const size_t kInitialSize{1024UL};
+    static const size_t kCheapPrepend{8UL};    // 前缀头
+    static const size_t kInitialSize{1024UL};  // 初始1KB
 
     explicit Buffer(size_t initialSize = kInitialSize)
         : buffer_(kCheapPrepend + initialSize),

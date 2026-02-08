@@ -11,37 +11,6 @@
 thread_local EventLoop* t_loop = nullptr;  // 线程局部变量,每个线程有一份独立的,全局可访问
 std::vector<Worker*> workers;              // 线程池  todo: unique_ptr优化
 
-// 简单的HTTP解析函数
-void ParseAndPrintHttp(Buffer& buffer) {
-    // 1. 查找HTTP 头部结束标志 "\r\n\r\n"
-    const char* crlf = "\r\n\r\n";
-    // std::search 在buffer中查找子串
-    const char* end =
-            std::search(buffer.Peek(), buffer.Peek() + buffer.ReadableBytes(), crlf, crlf + 4);
-    if (end == buffer.Peek() + buffer.ReadableBytes()) {
-        // 没找到完整的头,说明数据还没收全,直接返回等下一次
-        return;
-    }
-
-    // 2. 转换为字符串打印
-    std::string request(buffer.Peek(), end + 4);  // +4 把 \r\n\r\n 也带上
-    std::cout << "========= HTTP REQUEST =========" << std::endl;
-    std::cout << request << std::endl;
-    std::cout << "================================" << std::endl;
-
-    // 3. 解析第一行(Request Line)
-    // 将 HTTP 请求首行按空格分割,>> 遇到空格 / 换行 / 制表符终止
-    std::stringstream ss(request);
-    std::string method, url, version;
-    ss >> method >> url >> version;
-
-    std::cout << "Method: " << method << ", URL: " << url << std::endl;
-
-    // 4. 清空缓冲区(模拟处理完毕)
-    // 实际项目中,这里应该构建 Response
-    buffer.RetrieveAll();
-}
-
 // 处理客户端连接的协程
 Task<void> HandleClient(Socket client) {
     // 必须用 std::move 接管 client,否则析构会关闭fd
@@ -66,7 +35,10 @@ Task<void> HandleClient(Socket client) {
 
             // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
             request.Init();
-        }  // 协程结束，Task 析构，client 析构，连接关闭。
+        } else {
+            std::cout << "解析失败" << std::endl;
+        }
+        // 协程结束，Task 析构，client 析构，连接关闭。
     }
 }
 
@@ -130,6 +102,7 @@ int main() {
     // 3.启动 Acceptor 协程
     Acceptor(server);
     // 4.运行 Loop
+    std::cout << "MainLoop is ready." << std::endl;
     main_loop.Loop();
 
     return 0;

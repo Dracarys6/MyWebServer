@@ -8,7 +8,16 @@ bool HttpRequest::Parse(Buffer& buf) {
     if (buf.ReadableBytes() <= 0) return false;
 
     // 循环处理每一行
-    while (buf.ReadableBytes() > 0 && state_ != FINISH) {  // 1. 获取一行数据的结束位置
+    while (buf.ReadableBytes() > 0 && state_ != FINISH) {
+        // 1. 处理 BODY (特殊：不需要找 \r\n，而是看长度)
+        if (state_ == BODY) {
+            ParseBody(buf);
+            // 如果 ParseBody 还没读够数据，它会直接 return，state_ 保持 BODY
+            // 如果读够了，它会把 state_ 改为 FINISH
+            continue;  // 继续循环，检查是否 FINISH
+        }
+
+        // 2. 获取一行数据的结束位置
         const char* lineEnd =
                 std::search(buf.Peek(), buf.Peek() + buf.ReadableBytes(), crlf, crlf + 2);
         std::string line;
@@ -35,9 +44,6 @@ bool HttpRequest::Parse(Buffer& buf) {
                     return false;
                 }
                 break;
-            case BODY:
-                if (!ParseBody(buf)) return false;
-                break;
             default:
                 break;
         }
@@ -50,6 +56,7 @@ bool HttpRequest::ParseRequestLine(const std::string& line) {
     std::regex pattern("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
     std::smatch subMatch;
     if (std::regex_match(line, subMatch, pattern)) {
+        std::cout << "请求行: " << subMatch[0] << std::endl;
         method_ = subMatch[1];
         path_ = subMatch[2];
         version_ = subMatch[3];
@@ -63,27 +70,28 @@ void HttpRequest::ParseHeaders(const std::string& line) {
     std::regex pattern("^([^:]*): ?(.*)$");
     std::smatch subMatch;
     if (std::regex_match(line, subMatch, pattern)) {
+        std::cout << "请求头: " << subMatch[0] << std::endl;
         headers_[subMatch[1]] = subMatch[2];
     } else if (line.empty()) {
         // 遇到空行,Headers结束
-        if (method_ == "POST")
+        // 关键点：根据 Method 和 Content-Length 决定下一个状态
+        if (method_ == "POST" && headers_.count("Content-Length"))
             state_ = BODY;
         else
             state_ = FINISH;
     }
 }
 
-bool HttpRequest::ParseBody(Buffer& buf) {
+void HttpRequest::ParseBody(Buffer& buf) {
     size_t len = 0;
     if (auto it = headers_.find("Content-Length"); it != headers_.end()) {
         len = std::stoull(it->second);
-        // 检查数据够不够
-        if (buf.ReadableBytes() >= len) {
-            body_ = buf.RetrieveToStr(len);  // 够了,全部取走
-            state_ = FINISH;
-            return true;
-        } else
-            return false;  // 不够,啥也不做,等下一次 read
     }
-    return false;  // 没有Content-Length,视作请求体为空
+    // 检查数据够不够
+    if (buf.ReadableBytes() >= len) {
+        body_ = buf.RetrieveToStr(len);  // 够了,全部取走
+        state_ = FINISH;
+        std::cout << "请求体: " << body_ << std::endl;
+    } else {  // 不够,啥也不做,等下一次 read
+    }  // 没有Content-Length,视作请求体为空
 }

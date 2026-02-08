@@ -51,6 +51,14 @@ public:
         writerIndex_ = kCheapPrepend;
     }
 
+    // 取出指定长数据转为string
+    std::string RetrieveToStr(size_t len) {
+        if (len > ReadableBytes()) len = ReadableBytes();
+        std::string str(Peek(), len);
+        Retrieve(len);
+        return str;
+    }
+
     // 取出所有数据转为 string
     std::string RetrieveAllToStr() {
         std::string str(Peek(), ReadableBytes());

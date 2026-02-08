@@ -16,6 +16,7 @@ set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/Epoll.cpp
     ${PROJECT_SOURCE_DIR}/src/EventLoop.cpp
     ${PROJECT_SOURCE_DIR}/src/Buffer.cpp
+    ${PROJECT_SOURCE_DIR}/src/HttpRequest.cpp
 )
 
 # 先定义可执行目标（必须在前）

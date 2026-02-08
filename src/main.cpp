@@ -3,12 +3,13 @@
 
 #include "Buffer.h"
 #include "EventLoop.h"
+#include "HttpRequest.h"
 #include "Result.h"
 #include "Socket.h"
 #include "Worker.h"
 
 thread_local EventLoop* t_loop = nullptr;  // 线程局部变量,每个线程有一份独立的,全局可访问
-std::vector<Worker*> workers;              // 线程池
+std::vector<Worker*> workers;              // 线程池  todo: unique_ptr优化
 
 // 简单的HTTP解析函数
 void ParseAndPrintHttp(Buffer& buffer) {
@@ -45,29 +46,26 @@ void ParseAndPrintHttp(Buffer& buffer) {
 Task<void> HandleClient(Socket client) {
     // 必须用 std::move 接管 client,否则析构会关闭fd
     Buffer readBuffer;
+    HttpRequest request;
     while (true) {
         // 1. 协程挂起,等待数据读入 Buffer
         ssize_t n = co_await client.Read(readBuffer);
-        if (n > 0) {
-            // 收到数据了,尝试解析
-            ParseAndPrintHttp(readBuffer);
-            // 简单响应一下
-            std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 15\r\n\r\nHello WebServer";
-            write(client.Fd(), response.c_str(), response.length());
-            // HTTP 短连接默认读完就关,长连接则continue,这里演示短连接
-            break;
-        } else if (n == 0) {
-            // 对端关闭或 EAGAIN (在 ReadFd 里我们把 EAGAIN 处理为 return 0 了吗？
-            // 注意：ReadFd 返回 -1 且 errno=EAGAIN 时，我们上一段代码是 return 0
-            // 但如果是对端关闭 (EOF)，read 也会返回 0。
-            // 这是一个歧义点。
 
-            // 修正建议：让 Socket::Read 在 EAGAIN 时返回 -2，EOF 返回 0。
-            // 或者简单点：
-            // 假设我们只处理一次请求。
-            break;
-        } else {
-            break;
+        if (n <= 0) break;  // 简化处理,关闭连接
+        // 尝试解析
+        if (request.Parse(readBuffer)) {
+            // 解析成功
+            std::cout << "Parsed: " << request.method() << request.path() << std::endl;
+            // 如果是 POST,打印 Body
+            if (request.method() == "POST") {
+                std::cout << "Body: " << request.body() << std::endl;
+            }
+            // 目前暂时发送简单响应
+            std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
+            write(client.Fd(), response.c_str(), response.length());
+
+            // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
+            request.Init();
         }  // 协程结束，Task 析构，client 析构，连接关闭。
     }
 }

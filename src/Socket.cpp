@@ -34,8 +34,7 @@ Socket Socket::Accept() {
     socklen_t len = sizeof(addr);
     int client_fd = accept(fd_, (sockaddr*)&addr, &len);
     if (client_fd == -1) {
-        // todo:
-        // 后续配合协程修改
+        // todo: 后续配合协程修改
         // 目前如果是非阻塞且无连接,会抛异常或返回无效Socket,我们在上层处理
         return Socket(-1);
     }

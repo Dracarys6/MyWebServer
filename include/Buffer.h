@@ -36,6 +36,9 @@ public:
         return begin() + readerIndex_;  // 等价于 &buffer_[readerIndex_]
     }
 
+    // 返回可写数据的起始指针,相当于Peekend
+    const char* Writable() const { return Peek() + ReadableBytes(); }
+
     // 取出 len 长度的数据(移动 readerIndex)
     void Retrieve(size_t len) {
         if (len < ReadableBytes()) {

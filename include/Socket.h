@@ -111,8 +111,37 @@ public:
         return ReadAwaitable{fd_, buffer};
     }
 
-    // todo: 待实现封装 Write 方法
-    auto Write() {}
+    // TODO: 待完善封装 Write 方法
+    auto Write(Buffer& buffer) {
+        // 定义内部结构体来实现 Write 的 Awaitable
+        struct WriteAwaitable {
+            int fd;
+            Buffer& buf;
+
+            bool await_ready() { return false; }  // 总是挂起
+
+            void await_suspend(std::coroutine_handle<> hd) {
+                // 注册 EPOLLIN | EPOLLET
+                if (t_loop) {
+                    t_loop->WaitFor(fd, hd);
+                    try {
+                        t_loop->GetEpoll().Mod(fd, EPOLLIN | EPOLLET);
+                    } catch (...) {
+                        t_loop->GetEpoll().Add(fd, EPOLLIN | EPOLLET);
+                    }
+                }
+            }
+
+            ssize_t await_resume() {
+                ssize_t n = write(fd, buf.Writable(), buf.WritableBytes());
+                if (n < 0) {
+                    return 0;
+                }
+                return n;
+            }
+        };
+        return WriteAwaitable{fd_, buffer};
+    }
 
 private:
     int fd_;

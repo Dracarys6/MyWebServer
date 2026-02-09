@@ -100,6 +100,7 @@ struct Task<void> {
         return *this;
     }
     ~Task() {
+        // ! Task析构不销毁句柄,不然会段错误
         // if (handle) handle.destroy();
     }
     void get_result() {

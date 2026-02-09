@@ -72,7 +72,7 @@ private:
     Epoll epoll_;
     // 存储 fd -> 挂起的协程
     std::map<int, std::coroutine_handle<>> waiting_coroutines_;
-    bool stop_{false};
+    std::atomic<bool> stop_{false};
     int wakeup_fd_;
     std::mutex mutex_;
     std::vector<std::function<void()>> tasks_;

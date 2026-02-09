@@ -9,6 +9,7 @@
         "fcoroutines",
         "iovcnt",
         "mysqlclient",
+        "Peekend",
         "prependable",
         "pthread",
         "smod"

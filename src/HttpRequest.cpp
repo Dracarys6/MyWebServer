@@ -2,7 +2,6 @@
 
 #include <regex>
 
-// todo: post 似乎会死循环
 bool HttpRequest::Parse(Buffer& buf) {
     const char* crlf = "\r\n";
     if (buf.ReadableBytes() <= 0) return false;
@@ -18,12 +17,11 @@ bool HttpRequest::Parse(Buffer& buf) {
         }
 
         // 2. 获取一行数据的结束位置
-        const char* lineEnd =
-                std::search(buf.Peek(), buf.Peek() + buf.ReadableBytes(), crlf, crlf + 2);
+        const char* lineEnd = std::search(buf.Peek(), buf.Writable(), crlf, crlf + 2);
         std::string line;
 
         // 没找到换行符 -> 数据不完整，等下次 read
-        if (lineEnd == buf.Peek() + buf.ReadableBytes()) {
+        if (lineEnd == buf.Writable()) {
             return false;
         }
 

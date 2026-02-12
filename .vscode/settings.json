@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "DCMAKE",
         "docs",
         "dylib",
         "Epoll",
@@ -8,7 +9,9 @@
         "EPOLLOUT",
         "fcoroutines",
         "iovcnt",
+        "msvideo",
         "mysqlclient",
+        "ncpu",
         "Peekend",
         "prependable",
         "pthread",

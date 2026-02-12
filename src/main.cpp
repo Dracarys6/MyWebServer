@@ -4,6 +4,7 @@
 #include "Buffer.h"
 #include "EventLoop.h"
 #include "HttpRequest.h"
+#include "HttpResponse.h"
 #include "Result.h"
 #include "Socket.h"
 #include "Worker.h"
@@ -16,23 +17,28 @@ Task<void> HandleClient(Socket client) {
     // !必须用 std::move 接管 client,否则析构会关闭fd
     Buffer readBuffer;
     HttpRequest request;
+    HttpResponse response;
     while (true) {
         // *协程挂起,等待数据读入 Buffer
         ssize_t n = co_await client.Read(readBuffer);
 
         if (n <= 0) break;  // 简化处理,关闭连接
-        // 尝试解析
         if (request.Parse(readBuffer)) {
-            // 解析成功
-            std::cout << "Parsed: " << request.method() << request.path() << std::endl;
-            // 如果是 POST,打印 Body
-            if (request.method() == "POST") {
-                std::cout << "Body: " << request.body() << std::endl;
-            }
-            // 目前暂时发送简单响应
-            std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-            write(client.Fd(), response.c_str(), response.length());
+            // 1. 初始化响应
+            std::string path = request.getPath();
+            if (path == "/") path = "/index.html";  // 默认页
 
+            // 设置资源根目录为 resources目录
+            response.Init("../resources", path, false, 200);
+
+            // 2. 构建响应 Buffer
+            Buffer writeBuffer;
+            response.MakeResponse(writeBuffer);
+
+            // 3. 发送
+            // 暂时用同步write
+            // TODO:改用co_await client.Write(writeBuffer)
+            write(client.getFd(), writeBuffer.Peek(), writeBuffer.ReadableBytes());
             // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
             request.Init();
         } else {
@@ -52,15 +58,15 @@ Task<void> Acceptor(Socket& server) {
         co_await awaiter;                 // 挂起 awaiter是封装的可等待对象(read版)
         // 从 co_await 醒来(调度器EventLoop调用resume)说明有连接
         Socket client = server.Accept();
-        if (client.Fd() >= 0) {
-            std::cout << "New Connection: " << client.Fd() << " -> Dispatch to Worker "
+        if (client.getFd() >= 0) {
+            std::cout << "New Connection: " << client.getFd() << " -> Dispatch to Worker "
                       << next_worker << std::endl;
             client.SetNonBlocking();
             // 关键：把 Socket 移动到 Worker 线程去处理
             // 这里不能直接 HandleClient(client)，因为那会在主线程跑。
             // 启动处理协程
             auto client_ptr = std::make_shared<Socket>(std::move(client));
-            workers[next_worker]->GetLoop()->RunInLoop([client_ptr]() {
+            workers[next_worker]->getLoop()->RunInLoop([client_ptr]() {
                 // 这个 lambda 会在 Worker 线程里执行
                 // 1. 设置 TLS (Worker 线程自己已经设了，双保险)
                 // 2. 启动协程

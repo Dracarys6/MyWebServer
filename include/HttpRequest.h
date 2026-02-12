@@ -7,6 +7,8 @@
 
 class HttpRequest {
 public:
+    HttpRequest() {}
+
     enum ParseState {
         REQUEST_LINE,
         HEADERS,
@@ -27,10 +29,10 @@ public:
     bool Parse(Buffer& buf);
 
     // Getters
-    std::string path() const { return path_; }
-    std::string method() const { return method_; }
-    std::string body() const { return body_; }
-    std::string header(const std::string& key) const {
+    std::string getPath() const { return path_; }
+    std::string getMethod() const { return method_; }
+    std::string getBody() const { return body_; }
+    std::string getHeader(const std::string& key) const {
         if (auto it = headers_.find(key); it != headers_.end()) {
             return it->second;
         }

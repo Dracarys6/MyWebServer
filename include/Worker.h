@@ -46,7 +46,7 @@ public:
         if (thread_.joinable()) thread_.join();
     }
 
-    EventLoop* GetLoop() { return loop_; }
+    EventLoop* getLoop() { return loop_; }
 
 private:
     std::thread thread_;

@@ -66,7 +66,7 @@ public:
     void Listen();
 
     // 获取原始fd(仅用于 epoll注册)
-    int Fd() const { return fd_; }
+    int getFd() const { return fd_; }
 
     // Accept 返回一个Socket对象,具备RAII特性
     Socket Accept();

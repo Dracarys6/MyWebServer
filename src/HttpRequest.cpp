@@ -33,7 +33,7 @@ bool HttpRequest::Parse(Buffer& buf) {
             case REQUEST_LINE:
                 if (!ParseRequestLine(line))
                     return false;  // 请求头不对,提前退出状态机,避免继续循环
-                ParsePath();       // todo:处理 URL 里的参数
+                ParsePath();       // TODO:处理 URL 里的参数
                 break;
             case HEADERS:
                 ParseHeaders(line);
@@ -54,7 +54,6 @@ bool HttpRequest::ParseRequestLine(const std::string& line) {
     std::regex pattern("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
     std::smatch subMatch;
     if (std::regex_match(line, subMatch, pattern)) {
-        std::cout << "请求行: " << subMatch[0] << std::endl;
         method_ = subMatch[1];
         path_ = subMatch[2];
         version_ = subMatch[3];
@@ -68,7 +67,6 @@ void HttpRequest::ParseHeaders(const std::string& line) {
     std::regex pattern("^([^:]*): ?(.*)$");
     std::smatch subMatch;
     if (std::regex_match(line, subMatch, pattern)) {
-        std::cout << "请求头: " << subMatch[0] << std::endl;
         headers_[subMatch[1]] = subMatch[2];
     } else if (line.empty()) {
         // 遇到空行,Headers结束
@@ -89,7 +87,6 @@ void HttpRequest::ParseBody(Buffer& buf) {
     if (buf.ReadableBytes() >= len) {
         body_ = buf.RetrieveToStr(len);  // 够了,全部取走
         state_ = FINISH;
-        std::cout << "请求体: " << body_ << std::endl;
     } else {  // 不够,啥也不做,等下一次 read
     }  // 没有Content-Length,视作请求体为空
 }

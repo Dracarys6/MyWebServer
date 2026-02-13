@@ -27,8 +27,9 @@ const std::unordered_map<std::string, std::string> SUFFIX_TYPE = {
         {".js", "text/javascript"},
 };
 
-void HttpResponse::MakeResponse(Buffer& buf) {
+void HttpResponse::MakeResponse(Buffer& buf, int clientFd) {
     std::string finalPath{srcDir_ + path_};
+    std::cout << "[Debug]Path: " << finalPath << std::endl;
     if (stat((srcDir_ + path_).data(), &mmFileStat_) < 0 || S_ISDIR(mmFileStat_.st_mode)) {
         code_ = 404;  // 文件不存在
     } else if (!(mmFileStat_.st_mode & S_IROTH)) {
@@ -38,13 +39,13 @@ void HttpResponse::MakeResponse(Buffer& buf) {
     }
     // 如果是404,加载404.html
     if (code_ == 404) {
-        path_ = "/404.html";
+        path_ = "404.html";
         stat((srcDir_ + path_).data(), &mmFileStat_);
     }
 
     AddStateLine(buf);
     AddHeader(buf);
-    AddContent(buf);
+    AddContent(buf, clientFd);
 }
 
 void HttpResponse::AddStateLine(Buffer& buf) {
@@ -94,32 +95,14 @@ void HttpResponse::AddHeader(Buffer& buf) {
     buf.Append("\r\n");  // 头部结束
 }
 
-// 先采用 mmap + write
-// TODO:采用 sendfile 零拷贝
-void HttpResponse::AddContent(Buffer& buf) {
-    int srcFd = open((srcDir_ + path_).data(), O_RDONLY);
-    if (srcFd < 0) {
-        ErrorContent(buf, "File NotFound!");
+// 负责打开文件
+void HttpResponse::AddContent(Buffer& buf, int clientFd) {
+    int srcFd = open((srcDir_ + path_).data(), O_RDONLY);  // 获取文件 fd
+    if (srcFd < 0) {                                       // 获取文件失败,则使用404页面
+        ErrorContent(buf, "File NotFound");
         return;
     }
-
-    // *将文件映射到内存
-    // TODO:理解这些内容 MAP_PRIVATE 建立写时拷贝的私有映射
-    int* mmRet = (int*)(mmap(0, mmFileStat_.st_size, PROT_READ, MAP_PRIVATE, srcFd, 0));
-    if (*mmRet == -1) {
-        ErrorContent(buf, "File NotFound!");  // mmap失败
-        return;
-    }
-
-    mmFile_ = (char*)mmRet;
-    close(srcFd);
-
-    // 将 mmap 的内存追加到 buffer
-    // 注意：Buffer::Append 会执行 memcpy。
-    // 如果想要极致性能，可以使用 writev 直接发送 mmap 的指针 (sendfile 更好)。
-    // 但为了架构统一，我们先 copy 到 buffer。
-    // (进阶作业：改用 sendfile 实现零拷贝)
-    buf.Append(mmFile_, mmFileStat_.st_size);
+    fileFd_ = srcFd;
 }
 
 void HttpResponse::ErrorContent(Buffer& buf, std::string message) {

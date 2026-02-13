@@ -1,3 +1,5 @@
+#include <sys/sendfile.h>  //sendfile
+
 #include <iostream>
 #include <sstream>
 
@@ -7,6 +9,7 @@
 #include "HttpResponse.h"
 #include "Result.h"
 #include "Socket.h"
+#include "Utils.h"
 #include "Worker.h"
 
 thread_local EventLoop* t_loop = nullptr;  // 线程局部变量,每个线程有一份独立的,全局可访问
@@ -23,26 +26,28 @@ Task<void> HandleClient(Socket client) {
         ssize_t n = co_await client.Read(readBuffer);
 
         if (n <= 0) break;  // 简化处理,关闭连接
+        // 解析请求
         if (request.Parse(readBuffer)) {
-            // 1. 初始化响应
             std::string path = request.getPath();
             if (path == "/") path = "/index.html";  // 默认页
 
-            // 设置资源根目录为 resources目录
             response.Init("../resources", path, false, 200);
 
-            // 2. 构建响应 Buffer
-            Buffer writeBuffer;
-            response.MakeResponse(writeBuffer);
+            Buffer headerBuffer;
+            response.MakeResponse(headerBuffer, client.getFd());
 
-            // 3. 发送
-            // 暂时用同步write
-            // TODO:改用co_await client.Write(writeBuffer)
-            write(client.getFd(), writeBuffer.Peek(), writeBuffer.ReadableBytes());
+            // 1. 先发送Header
+            write(client.getFd(), headerBuffer.Peek(), headerBuffer.ReadableBytes());
+
+            // 2. 如果有文件,使用 sendfile 发送 Body
+            if (response.getFileFd() != -1 && response.getCode() == 200) {
+                if (Utils::SendFile(client.getFd(), response.getFileFd(), response.getFileSize()))
+                    std::cout << "传输成功!" << std::endl;
+            }
             // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
             request.Init();
         } else {
-            std::cout << "解析失败" << std::endl;
+            std::cout << "解析失败!" << std::endl;
         }
         // *协程结束，Task 析构，client 析构，连接关闭。
     }

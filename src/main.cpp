@@ -1,3 +1,4 @@
+#include <netinet/tcp.h>
 #include <sys/sendfile.h>  //sendfile
 
 #include <iostream>
@@ -21,35 +22,72 @@ Task<void> HandleClient(Socket client) {
     Buffer readBuffer;
     HttpRequest request;
     HttpResponse response;
+
+    // TODO:增加超时机制
+    // client.SetTimeOut(5000);  //5秒无数据自动断开
+
     while (true) {
         // *协程挂起,等待数据读入 Buffer
         ssize_t n = co_await client.Read(readBuffer);
+        if (n <= 0) break;  // 简化处理,对端关闭或超时 直接关闭连接
 
-        if (n <= 0) break;  // 简化处理,关闭连接
-        // 解析请求
-        if (request.Parse(readBuffer)) {
+        //*循环处理 Buffer 中的请求
+        while (request.Parse(readBuffer)) {
+            //*处理业务逻辑
             std::string path = request.getPath();
-            if (path == "/") path = "/index.html";  // 默认页
+            //! 拦截API请求
+            if (path == "/login" && request.getMethod() == "POST") {
+                // 不是静态文件
+                std::string user = request.getPost("user");
+                std::string pwd = request.getPost("pwd");
 
-            response.Init("../resources", path, false, 200);
+                std::cout << "[Debug]user = " << request.getPost("user") << std::endl;
+                std::cout << "[Debug]pwd = " << request.getPost("pwd") << std::endl;
 
+                if (user == "root" && pwd == "123") {
+                    path = "/welcome.html";  // 登录成功,显示欢迎页
+                } else {
+                    path = "/error.html";
+                }
+            } else if (path == "/") {
+                path = "/index.html";  // 默认页
+            }
+
+            //*初始化响应
+            bool keepAlive = request.IsKeepAlive();
+            response.Init("../resources", path, keepAlive, 200);
+
+            //*生成响应数据
             Buffer headerBuffer;
             response.MakeResponse(headerBuffer, client.getFd());
 
-            // 1. 先发送Header
+            //*发送响应
+            // 发送前开启,TCP_CORK优化,避免 Header 和 Body 分成两个 TCP 包发
+            int on = 1;
+            setsockopt(client.getFd(), IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
+
+            // 先发送Header
+            // TODO: 改为异步write
             write(client.getFd(), headerBuffer.Peek(), headerBuffer.ReadableBytes());
 
-            // 2. 如果有文件,使用 sendfile 发送 Body
+            // 如果是静态文件文件,使用 sendfile 发送 Body
             if (response.getFileFd() != -1 && response.getCode() == 200) {
                 if (Utils::SendFile(client.getFd(), response.getFileFd(), response.getFileSize()))
                     std::cout << "传输成功!" << std::endl;
             }
+
+            // 发送完关闭 CORK,强制刷出数据
+            int off = 0;
+            setsockopt(client.getFd(), IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
+
+            if (!keepAlive) {  // 如果是短连接,发完就关
+                break;
+            }
+
             // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
             request.Init();
-        } else {
-            std::cout << "解析失败!" << std::endl;
         }
-        // *协程结束，Task 析构，client 析构，连接关闭。
+        // *协程结束，Task 析构，client 析构，连接关闭
     }
 }
 

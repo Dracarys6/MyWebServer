@@ -29,7 +29,7 @@ const std::unordered_map<std::string, std::string> SUFFIX_TYPE = {
 
 void HttpResponse::MakeResponse(Buffer& buf, int clientFd) {
     std::string finalPath{srcDir_ + path_};
-    std::cout << "[Debug]Path: " << finalPath << std::endl;
+    std::cout << "[Debug]path = " << finalPath << std::endl;
     if (stat((srcDir_ + path_).data(), &mmFileStat_) < 0 || S_ISDIR(mmFileStat_.st_mode)) {
         code_ = 404;  // 文件不存在
     } else if (!(mmFileStat_.st_mode & S_IROTH)) {

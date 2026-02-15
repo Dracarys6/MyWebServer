@@ -82,11 +82,66 @@ void HttpRequest::ParseBody(Buffer& buf) {
     size_t len = 0;
     if (auto it = headers_.find("Content-Length"); it != headers_.end()) {
         len = std::stoull(it->second);
+        // 检查数据够不够
+        if (buf.ReadableBytes() >= len) {
+            body_ = buf.RetrieveToStr(len);  // 够了,全部取走
+            ParsePost();                     // 解析 body_ 内容存入post_ map
+            state_ = FINISH;
+        }
+        //  else 不够,等下一次 read
     }
-    // 检查数据够不够
-    if (buf.ReadableBytes() >= len) {
-        body_ = buf.RetrieveToStr(len);  // 够了,全部取走
-        state_ = FINISH;
-    } else {  // 不够,啥也不做,等下一次 read
-    }  // 没有Content-Length,视作请求体为空
+    // else 没有Content-Length,视作请求体为空
+}
+
+void HttpRequest::ParsePost() {
+    std::cout << "[Debug]method = " << getMethod() << std::endl;
+    std::cout << "[Debug]Content-Type = " << headers_["Content-Type"] << std::endl;
+    std::cout << "[Debug]body = " << getBody() << std::endl;
+    if (method_ == "POST" && headers_["Content-Type"] == "application/x-www-form-urlencoded") {
+        if (body_.empty()) return;
+
+        // 解析 key=value & key2=value2
+        std::string key{}, value{};
+        int num{0};
+        int n = body_.size();
+        int i = 0, j = 0;
+
+        for (; i < n; ++i) {
+            char ch = body_[i];
+            switch (ch) {
+                case '=':
+                    key = body_.substr(j, i - j);
+                    j = i + 1;
+                    break;
+                case '+':
+                    body_[i] = ' ';  // 空格替换
+                    break;
+                case '%':
+                    // URL Decode: %20 -> ' '(空格)
+                    num = ConverHex(body_[i + 1]) * 16 + ConverHex(body_[i + 2]);
+                    body_[i + 2] = num % 10 + '0';
+                    body_[i + 1] = num / 10 + '0';
+                    i += 2;
+                    break;
+                case '&':
+                    value = body_.substr(j, i - j);
+                    j = i + 1;
+                    post_[key] = value;
+                default:
+                    break;
+            }
+        }
+        // 最后一个参数
+        value = body_.substr(j, i - j);
+        post_[key] = value;
+    }
+
+    std::cout << "[Debug]user = " << post_["user"] << std::endl;
+    std::cout << "[Debug]pwd = " << post_["pwd"] << std::endl;
+}
+
+int HttpRequest::ConverHex(char ch) {
+    if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+    if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
+    return ch;
 }

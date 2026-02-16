@@ -23,7 +23,7 @@ struct IoAwaitable {
     // 2. 挂起时的操作
     void await_suspend(std::coroutine_handle<> hd) {
         // 将 fd 和当前协程句柄 hd 注册到调度器
-        if (t_loop) {
+        if (t_loop != nullptr) {
             t_loop->WaitFor(fd, hd);
 
             // 将 fd 注册到 Epoll

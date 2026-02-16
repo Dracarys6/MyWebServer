@@ -10,6 +10,7 @@
 #include "HttpResponse.h"
 #include "Result.h"
 #include "Socket.h"
+#include "SqlConnPool.h"
 #include "Utils.h"
 #include "Worker.h"
 
@@ -36,13 +37,33 @@ Task<void> HandleClient(Socket client) {
             //*处理业务逻辑
             std::string path = request.getPath();
             //! 拦截API请求
+            // Mysql 登录
             if (path == "/login" && request.getMethod() == "POST") {
-                // 不是静态文件
                 std::string user = request.getPost("user");
                 std::string pwd = request.getPost("pwd");
 
                 std::cout << "[Debug]user = " << request.getPost("user") << std::endl;
                 std::cout << "[Debug]pwd = " << request.getPost("pwd") << std::endl;
+
+                // 获取连接
+                MYSQL* sql = nullptr;
+                SqlConn sqlConn(&sql, SqlConnPool::getInstance());
+
+                std::cout << "[Debug]Mysql Connect Success!" << std::endl;
+
+                // 执行查询
+                char order[256] = {0};
+                snprintf(order, 256,
+                         "SELECT username,password FROM user WHERE username='%s' LIMIT 1",
+                         user.c_str());
+
+                if (mysql_query(sql, order)) {
+                    // 查询失败...
+                }
+
+                MYSQL_RES* result = mysql_store_result(sql);
+                // 解析结果对比密码...
+                mysql_free_result(result);
 
                 if (user == "root" && pwd == "123") {
                     path = "/welcome.html";  // 登录成功,显示欢迎页
@@ -126,6 +147,9 @@ Task<void> Acceptor(Socket& server) {
 }
 
 int main() {
+    // 初始化 Mysql 连接池
+    SqlConnPool::getInstance()->Init("localhost", 3306, "root", "20050430", "webserver", 16);
+
     // 启动 4 个 Worker
     for (int i = 0; i < 4; ++i) {
         workers.push_back(std::make_unique<Worker>());

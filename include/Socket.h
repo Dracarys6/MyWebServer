@@ -122,7 +122,7 @@ public:
 
             void await_suspend(std::coroutine_handle<> hd) {
                 // 注册 EPOLLIN | EPOLLET
-                if (t_loop) {
+                if (t_loop != nullptr) {
                     t_loop->WaitFor(fd, hd);
                     try {
                         t_loop->GetEpoll().Mod(fd, EPOLLIN | EPOLLET);

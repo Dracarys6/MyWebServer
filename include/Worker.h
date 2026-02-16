@@ -39,7 +39,7 @@ public:
     }
 
     ~Worker() {
-        if (loop_) {
+        if (loop_ != nullptr) {
             loop_->Stop();    // 停止循环
             loop_->WakeUp();  // 醒来退出循环
         }

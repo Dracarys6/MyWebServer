@@ -18,13 +18,13 @@ set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/Buffer.cpp
     ${PROJECT_SOURCE_DIR}/src/HttpRequest.cpp
     ${PROJECT_SOURCE_DIR}/src/HttpResponse.cpp
+    ${PROJECT_SOURCE_DIR}/src/SqlConnPool.cpp
 )
 
 # 先定义可执行目标（必须在前）
 add_executable(server ${SOURCES})
 
-# 再对目标配置编译选项（覆盖全局FLAGS）
-# 调试阶段核心：-O0 关闭优化 + -g 调试信息，必选！
+# 调试阶段核心：-O0 关闭优化 + -g 调试信息
 target_compile_options(server PRIVATE
     -g            # 调试信息，gdb必备
     -O0           # 关闭优化，保证调试行号/变量准确，调试阶段绝不用O2/O3
@@ -32,8 +32,8 @@ target_compile_options(server PRIVATE
     -Wall         # 开启所有警告，提前发现空指针/未初始化变量等问题
 )
 
-# 第三步：配置目标链接选项（替代全局CMAKE_CXX_FLAGS中的-pthread，更规范）
+# 第三步：配置目标链接选项
 target_link_libraries(server PRIVATE
     pthread
-    # mysqlclient  
+    mysqlclient  
 )

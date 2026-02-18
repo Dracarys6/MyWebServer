@@ -2,6 +2,8 @@
 
 #include <regex>
 
+#include "Log.h"
+
 bool HttpRequest::Parse(Buffer& buf) {
     const char* crlf = "\r\n";
     if (buf.ReadableBytes() <= 0) return false;
@@ -94,9 +96,9 @@ void HttpRequest::ParseBody(Buffer& buf) {
 }
 
 void HttpRequest::ParsePost() {
-    std::cout << "[Debug]method = " << getMethod() << std::endl;
-    std::cout << "[Debug]Content-Type = " << headers_["Content-Type"] << std::endl;
-    std::cout << "[Debug]body = " << getBody() << std::endl;
+    LOG_DEBUG("method = {}", getMethod());
+    LOG_DEBUG("Content-Type = {}", headers_["Content-Type"]);
+    LOG_DEBUG("body = {}", getBody());
     if (method_ == "POST" && headers_["Content-Type"] == "application/x-www-form-urlencoded") {
         if (body_.empty()) return;
 
@@ -136,8 +138,8 @@ void HttpRequest::ParsePost() {
         post_[key] = value;
     }
 
-    std::cout << "[Debug]user = " << post_["user"] << std::endl;
-    std::cout << "[Debug]pwd = " << post_["pwd"] << std::endl;
+    LOG_DEBUG("user = {}", post_["user"]);
+    LOG_DEBUG("pwd = {}", post_["pwd"]);
 }
 
 int HttpRequest::ConverHex(char ch) {

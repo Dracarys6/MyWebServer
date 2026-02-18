@@ -19,7 +19,11 @@ set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/HttpRequest.cpp
     ${PROJECT_SOURCE_DIR}/src/HttpResponse.cpp
     ${PROJECT_SOURCE_DIR}/src/SqlConnPool.cpp
+    ${PROJECT_SOURCE_DIR}/src/Log.cpp
 )
+
+# 强制 fmt 用 header-only 模式
+add_compile_definitions(FMT_HEADER_ONLY)
 
 # 先定义可执行目标（必须在前）
 add_executable(server ${SOURCES})

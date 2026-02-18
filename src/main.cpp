@@ -8,6 +8,7 @@
 #include "EventLoop.h"
 #include "HttpRequest.h"
 #include "HttpResponse.h"
+#include "Log.h"
 #include "Result.h"
 #include "Socket.h"
 #include "SqlConnPool.h"
@@ -19,7 +20,7 @@ std::vector<std::unique_ptr<Worker>> workers;  // 线程池
 
 // 处理客户端连接的协程
 Task<void> HandleClient(Socket client) {
-    // !必须用 std::move 接管 client,否则析构会关闭fd
+    //! 必须用 std::move 接管 client,否则析构会关闭fd
     Buffer readBuffer;
     HttpRequest request;
     HttpResponse response;
@@ -28,28 +29,24 @@ Task<void> HandleClient(Socket client) {
     // client.SetTimeOut(5000);  //5秒无数据自动断开
 
     while (true) {
-        // *协程挂起,等待数据读入 Buffer
+        //* 协程挂起,等待数据读入 Buffer
         ssize_t n = co_await client.Read(readBuffer);
         if (n <= 0) break;  // 简化处理,对端关闭或超时 直接关闭连接
 
-        //*循环处理 Buffer 中的请求
+        //* 循环处理 Buffer 中的请求
         while (request.Parse(readBuffer)) {
-            //*处理业务逻辑
+            //* 处理业务逻辑
             std::string path = request.getPath();
             //! 拦截API请求
             // Mysql 登录
             if (path == "/login" && request.getMethod() == "POST") {
                 std::string user = request.getPost("user");
                 std::string pwd = request.getPost("pwd");
-
-                std::cout << "[Debug]user = " << request.getPost("user") << std::endl;
-                std::cout << "[Debug]pwd = " << request.getPost("pwd") << std::endl;
-
                 // 获取连接
                 MYSQL* sql = nullptr;
                 SqlConn sqlConn(&sql, SqlConnPool::getInstance());
 
-                std::cout << "[Debug]Mysql Connect Success!" << std::endl;
+                LOG_DEBUG("Mysql Connect Success!");
 
                 // 执行查询
                 char order[256] = {0};
@@ -74,15 +71,15 @@ Task<void> HandleClient(Socket client) {
                 path = "/index.html";  // 默认页
             }
 
-            //*初始化响应
+            //* 初始化响应
             bool keepAlive = request.IsKeepAlive();
             response.Init("../resources", path, keepAlive, 200);
 
-            //*生成响应数据
+            //* 生成响应数据
             Buffer headerBuffer;
             response.MakeResponse(headerBuffer, client.getFd());
 
-            //*发送响应
+            //* 发送响应
             // 发送前开启,TCP_CORK优化,避免 Header 和 Body 分成两个 TCP 包发
             int on = 1;
             setsockopt(client.getFd(), IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
@@ -108,7 +105,7 @@ Task<void> HandleClient(Socket client) {
             // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
             request.Init();
         }
-        // *协程结束，Task 析构，client 析构，连接关闭
+        //* 协程结束，Task 析构，client 析构，连接关闭
     }
 }
 
@@ -147,6 +144,16 @@ Task<void> Acceptor(Socket& server) {
 }
 
 int main() {
+    // 初始化日志(开启异步,队列长度 1024)
+    Log::getInstance()->Init(0, "./log", ".log", 1024);
+
+    LOG_INFO("======== Server Start ========");
+    LOG_INFO("Log System Init Success");
+    LOG_INFO("Server Start Port: {}", 8080);
+    LOG_DEBUG("User {} login from IP: {}", "root", "127.0.0.1");
+    LOG_ERROR("Database connection failed: error code {}", 500);
+    Log::getInstance()->Flush();  // 刷盘
+
     // 初始化 Mysql 连接池
     SqlConnPool::getInstance()->Init("localhost", 3306, "root", "20050430", "webserver", 16);
 

@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "Log.h"
+
 const std::unordered_map<std::string, std::string> SUFFIX_TYPE = {
         {".html", "text/html"},
         {".xml", "text/xml"},
@@ -29,7 +31,7 @@ const std::unordered_map<std::string, std::string> SUFFIX_TYPE = {
 
 void HttpResponse::MakeResponse(Buffer& buf, int clientFd) {
     std::string finalPath{srcDir_ + path_};
-    std::cout << "[Debug]path = " << finalPath << std::endl;
+    LOG_DEBUG("path = {}", finalPath);
     if (stat((srcDir_ + path_).data(), &mmFileStat_) < 0 || S_ISDIR(mmFileStat_.st_mode)) {
         code_ = 404;  // 文件不存在
     } else if (!(mmFileStat_.st_mode & S_IROTH)) {

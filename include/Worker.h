@@ -17,13 +17,13 @@ public:
     Worker() {
         // 启动线程
         thread_ = std::thread([this]() {
-            // *1. 在线程内创建 EventLoop
+            //* 1. 在线程内创建 EventLoop
             EventLoop loop;
-            // *2. 设置 TLS
+            //* 2. 设置 TLS
             t_loop = &loop;
-            // *3. 保存指针供外部调用 (简化 先直接赋值)
+            //* 3. 保存指针供外部调用 (简化 先直接赋值)
             this->loop_ = &loop;
-            // *4.通知主线程: 我准备好了
+            //* 4. 通知主线程: 我准备好了
             {
                 std::unique_lock<std::mutex> lock(mutex_);
                 ready_ = true;

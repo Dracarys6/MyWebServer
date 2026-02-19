@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "Log.h"
+
 void SqlConnPool::Init(const char* host, int port, const char* user, const char* pwd,
                        const char* dbName, int connSize) {
     if (connSize <= 0) {
@@ -26,7 +28,7 @@ void SqlConnPool::Init(const char* host, int port, const char* user, const char*
 MYSQL* SqlConnPool::GetConn() {
     MYSQL* sql = nullptr;
     if (connQue_.empty()) {
-        std::cout << "SqlConnPool Busy!" << std::endl;
+        LOG_WARN("SqlConnPool Busy!");
         return nullptr;
     }
 

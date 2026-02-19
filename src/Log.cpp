@@ -6,15 +6,16 @@ Log::Log() {}
 
 Log::~Log() {
     if (writeThread_ != nullptr && writeThread_->joinable()) {
-        while (!deque_->empty()) {
-            deque_->flush();  // 唤醒消费者把剩下的写完
-        }
+        // 1. 关闭队列 (设置 flag,禁止新写入,唤醒消费者)
         deque_->shutdown();
+        // 2. 等待后台线程结束 (会把剩余数据pop完)
         writeThread_->join();
     }
+
+    // 3. 最后刷一次系统缓冲并关闭文件
     if (fp_ != nullptr) {
         std::lock_guard<std::mutex> lock(mutex_);
-        Flush();
+        fflush(fp_);
         fclose(fp_);
     }
 }
@@ -75,13 +76,7 @@ void Log::AsyncWrite() {
     while (deque_->pop(str)) {
         std::lock_guard<std::mutex> lock(mutex_);
         fputs(str.c_str(), fp_);
-        ++count;
-
-        // 每 10 条刷一次盘，或缓冲区满了自动刷
-        if (count >= 10) {
-            fflush(fp_);
-            count = 0;
-        }
+        fflush(fp_);
     }
     // 退出前最后刷一次
     fflush(fp_);
@@ -89,7 +84,7 @@ void Log::AsyncWrite() {
 
 void Log::Flush() {
     if (isAsync_) {
-        deque_->flush();
+        deque_->flush();  // 唤醒后台线程去取
     }
-    fflush(fp_);
+    fflush(fp_);  // 强制刷入磁盘
 }

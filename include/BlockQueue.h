@@ -26,11 +26,8 @@ public:
     }
 
     void shutdown() {
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            dq_.clear();
-            shutdown_ = true;
-        }
+        clear();
+        shutdown_ = true;
         condConsumer_.notify_all();  // 唤醒所有消费者
         condProducer_.notify_all();  // 唤醒所有生产者
     }
@@ -103,10 +100,10 @@ public:
 
         //* 等待队列非空
         while (dq_.empty()) {
-            condConsumer_.wait(lock);  // 消费者等待
             if (shutdown_) {
                 return false;
             }
+            condConsumer_.wait(lock);  // 消费者等待
         }
         item = std::move(dq_.front());  // 移动语义
         dq_.pop_front();
@@ -127,8 +124,8 @@ public:
             if (shutdown_) {
                 return false;
             }
+            condConsumer_.wait(lock);  // 消费者等待
         }
-
         item = std::move(dq_.front());
         dq_.pop_front();
         condProducer_.notify_one();  // 通知一个生产者: 队列非满了

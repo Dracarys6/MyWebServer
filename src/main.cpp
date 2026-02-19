@@ -42,11 +42,15 @@ Task<void> HandleClient(Socket client) {
             if (path == "/login" && request.getMethod() == "POST") {
                 std::string user = request.getPost("user");
                 std::string pwd = request.getPost("pwd");
+
+                LOG_DEBUG("user = {}", user);
+                LOG_DEBUG("pwd = {}", pwd);
+
                 // 获取连接
                 MYSQL* sql = nullptr;
                 SqlConn sqlConn(&sql, SqlConnPool::getInstance());
 
-                LOG_DEBUG("Mysql Connect Success!");
+                LOG_INFO("Mysql Connect Success");
 
                 // 执行查询
                 char order[256] = {0};
@@ -91,7 +95,7 @@ Task<void> HandleClient(Socket client) {
             // 如果是静态文件文件,使用 sendfile 发送 Body
             if (response.getFileFd() != -1 && response.getCode() == 200) {
                 if (Utils::SendFile(client.getFd(), response.getFileFd(), response.getFileSize()))
-                    std::cout << "传输成功!" << std::endl;
+                    LOG_INFO("SendFile 传输成功");
             }
 
             // 发送完关闭 CORK,强制刷出数据
@@ -112,7 +116,7 @@ Task<void> HandleClient(Socket client) {
 // 接收连接的协程
 Task<void> Acceptor(Socket& server) {
     int next_worker{0};
-    std::cout << "Acceptor started." << std::endl;
+    LOG_INFO("Acceptor started");
     while (true) {
         Buffer buf;
         auto awaiter = server.Read(buf);  // 只要等待事件,不读数据
@@ -120,8 +124,7 @@ Task<void> Acceptor(Socket& server) {
         // 从 co_await 醒来(调度器EventLoop调用resume)说明有连接
         Socket client = server.Accept();
         if (client.getFd() >= 0) {
-            std::cout << "New Connection: " << client.getFd() << " -> Dispatch to Worker "
-                      << next_worker << std::endl;
+            LOG_INFO("New Connection: {} -> Dispatch to Worker {}", client.getFd(), next_worker);
             client.SetNonBlocking();
             // 关键：把 Socket 移动到 Worker 线程去处理
             // 这里不能直接 HandleClient(client)，因为那会在主线程跑。
@@ -175,8 +178,9 @@ int main() {
     // 3.启动 Acceptor 协程
     Acceptor(server);
     // 4.运行 Loop
-    std::cout << "MainLoop is ready." << std::endl;
+    LOG_INFO("MainLoop is ready");
     main_loop.Loop();
 
+    LOG_INFO("======== Server End ========");
     return 0;
 }

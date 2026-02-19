@@ -1,3 +1,4 @@
+#include <Log.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -17,7 +18,7 @@ int main() {
 
     // 1.socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        std::cout << "\nSocket creation error" << std::endl;
+        LOG_ERROR("Socket creation error!");
         return -1;
     }
 
@@ -27,23 +28,23 @@ int main() {
 
     // 3.将IPv4地址从文本转换成二进制格式
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-        std::cout << "\nInvalid address/ Address not supported \n";
+        LOG_ERROR("Invalid address/ Address not supported!");
         return -1;
     }
 
     // 4.connect 连接到服务器
     if (connect(sock, (sockaddr*)&serv_addr, sizeof(serv_addr))) {
-        std::cout << "\nConnection Failed" << std::endl;
+        LOG_ERROR("Connection Failed!");
         return -1;
     }
 
     // 5.write 向服务器发送数据
     write(sock, message, sizeof(message));
-    std::cout << "Message sent to server: " << message << std::endl;
+    LOG_INFO("Message sent to server: {}", message);
 
     // 6.read 读取服务器响应
     ssize_t valread = read(sock, buffer, BUFFER_SIZE);
-    std::cout << "Response from server: " << buffer << std::endl;
+    LOG_INFO("Response from server: {}", buffer);
 
     // 7.close
     close(sock);

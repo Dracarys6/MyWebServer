@@ -137,9 +137,6 @@ void HttpRequest::ParsePost() {
         value = body_.substr(j, i - j);
         post_[key] = value;
     }
-
-    LOG_DEBUG("user = {}", post_["user"]);
-    LOG_DEBUG("pwd = {}", post_["pwd"]);
 }
 
 int HttpRequest::ConverHex(char ch) {

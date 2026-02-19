@@ -123,13 +123,13 @@ private:
 
 // 宏定义简化调用
 #define LOG_DEBUG(format, ...) \
-    if (0 <= Log::getInstance()->getLevel()) Log::getInstance()->Write(0, format, ##__VA_ARGS__)
+    if (Log::getInstance()->getLevel() == 0) Log::getInstance()->Write(0, format, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-    if (1 <= Log::getInstance()->getLevel()) Log::getInstance()->Write(1, format, ##__VA_ARGS__);
+    if (Log::getInstance()->getLevel() <= 1) Log::getInstance()->Write(1, format, ##__VA_ARGS__);
 
 #define LOG_WARN(format, ...) \
-    if (2 <= Log::getInstance()->getLevel()) Log::getInstance()->Write(2, format, ##__VA_ARGS__);
+    if (Log::getInstance()->getLevel() <= 2) Log::getInstance()->Write(2, format, ##__VA_ARGS__);
 
 #define LOG_ERROR(format, ...) \
-    if (3 <= Log::getInstance()->getLevel()) Log::getInstance()->Write(3, format, ##__VA_ARGS__);
+    if (Log::getInstance()->getLevel() <= 3) Log::getInstance()->Write(3, format, ##__VA_ARGS__);

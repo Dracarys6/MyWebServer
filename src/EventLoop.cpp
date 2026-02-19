@@ -1,11 +1,19 @@
 #include "EventLoop.h"
 
+#include <sstream>
+
+#include "Log.h"
+
 // 核心循环
 void EventLoop::Loop() {
     // 把 wakeup_fd 加入 epoll
     epoll_.Add(wakeup_fd_, EPOLLIN);
 
-    std::cout << "EventLoop Started in thread " << std::this_thread::get_id() << std::endl;
+    auto pid = std::this_thread::get_id();
+    std::ostringstream oss;
+    oss << pid;
+    std::string id_str = oss.str();
+    LOG_INFO("EventLoop Started in thread {}", id_str);
 
     while (!stop_) {
         auto events = epoll_.Wait(-1);  // 阻塞等待,直到有fd就绪,释放CPU,不空转

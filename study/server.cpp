@@ -9,6 +9,8 @@
 #include <iostream>
 #include <ostream>
 
+#include "Log.h"
+
 #define PORT 8080         // 监听端口
 #define BUFFER_SIZE 1024  // 缓冲区大小
 
@@ -50,7 +52,7 @@ int main() {
         perror("listen failed");
         exit(EXIT_FAILURE);
     }
-    std::cout << "Server listening on port" << PORT << std::endl;
+    LOG_INFO("Server listening on port {}", PORT);
 
     // 6.accept 接受客户端连接(阻塞等待)
     if ((new_socket = accept(server_fd, (sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
@@ -60,11 +62,11 @@ int main() {
 
     // 7.read 读取客户端发送的数据
     size_t valread = read(new_socket, buffer, BUFFER_SIZE);
-    std::cout << "Received from client: " << buffer << std::endl;
+    LOG_INFO("Received from client: {}", buffer);
 
     // 8.write 向客户端发送响应
     write(new_socket, response, strlen(response));
-    std::cout << "Response sent to client" << std::endl;
+    LOG_INFO("Response sent to client");
 
     // 9.close 关闭socket
     close(new_socket);

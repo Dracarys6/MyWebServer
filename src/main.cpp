@@ -38,7 +38,7 @@ Task<void> HandleClient(Socket client) {
             //* 处理业务逻辑
             std::string path = request.getPath();
             //! 拦截API请求
-            // Mysql 登录
+            //* Mysql 登录
             if (path == "/login" && request.getMethod() == "POST") {
                 std::string user = request.getPost("user");
                 std::string pwd = request.getPost("pwd");
@@ -150,11 +150,9 @@ int main() {
     // 初始化日志(开启异步,队列长度 1024)
     Log::getInstance()->Init(0, "./log", ".log", 1024);
 
-    LOG_INFO("======== Server Start ========");
+    LOG_INFO("========== Server Start ==========");
     LOG_INFO("Log System Init Success");
     LOG_INFO("Server Start Port: {}", 8080);
-    LOG_DEBUG("User {} login from IP: {}", "root", "127.0.0.1");
-    LOG_ERROR("Database connection failed: error code {}", 500);
     Log::getInstance()->Flush();  // 刷盘
 
     // 初始化 Mysql 连接池
@@ -181,6 +179,6 @@ int main() {
     LOG_INFO("MainLoop is ready");
     main_loop.Loop();
 
-    LOG_INFO("======== Server End ========");
+    LOG_INFO("========== Server End ==========");
     return 0;
 }

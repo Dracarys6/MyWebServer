@@ -7,6 +7,7 @@
 
 #include "Buffer.h"
 #include "IoAwaitable.h"
+#include "Log.h"
 
 /**
  * @brief 封装Socket的fd,提供RAII机制
@@ -17,7 +18,7 @@ public:
     Socket() {
         fd_ = socket(AF_INET, SOCK_STREAM, 0);
         if (fd_ == -1) {
-            throw std::runtime_error("Socket create error: " + std::string(strerror(errno)));
+            LOG_ERROR("Socket create error: {}", std::string(strerror(errno)));
         }
     }
 
@@ -25,7 +26,7 @@ public:
     explicit Socket(int fd) {
         fd_ = fd;
         if (fd_ == -1) {
-            throw std::runtime_error("Socket create error: " + std::string(strerror(errno)));
+            LOG_ERROR("Socket create error: {}", std::string(strerror(errno)));
         }
     }
 

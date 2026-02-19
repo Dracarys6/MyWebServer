@@ -15,11 +15,11 @@ void SqlConnPool::Init(const char* host, int port, const char* user, const char*
         MYSQL* sql = nullptr;
         sql = mysql_init(sql);
         if (sql == nullptr) {
-            throw std::runtime_error("Mysql Init Error!");
+            LOG_ERROR("Mysql Init Error: {}", std::string(strerror(errno)));
         }
         sql = mysql_real_connect(sql, host, user, pwd, dbName, port, nullptr, 0);
         if (sql == nullptr) {
-            throw std::runtime_error("Mysql Connect Error!");
+            LOG_ERROR("Mysql Connect Error: {}", std::string(strerror(errno)));
         }
         connQue_.push(sql);
     }

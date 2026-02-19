@@ -87,7 +87,11 @@ void HttpRequest::ParseBody(Buffer& buf) {
         // 检查数据够不够
         if (buf.ReadableBytes() >= len) {
             body_ = buf.RetrieveToStr(len);  // 够了,全部取走
-            ParsePost();                     // 解析 body_ 内容存入post_ map
+            if (headers_["Content-Type"] == "application/json") {
+                ParseJson();
+            } else {
+                ParsePost();  // 解析 body_ 内容存入post_ map
+            }
             state_ = FINISH;
         }
         //  else 不够,等下一次 read
@@ -136,6 +140,29 @@ void HttpRequest::ParsePost() {
         // 最后一个参数
         value = body_.substr(j, i - j);
         post_[key] = value;
+    }
+}
+
+void HttpRequest::ParseJson() {
+    try {
+        if (body_.empty()) {
+            LOG_WARN("Body is empty!");
+            return;
+        }
+        json j = json::parse(body_);  // 利用json库解析
+
+        // 遍历json对象,把第一层 key-value 存入 post_ map
+        for (auto& [key, val] : j.items()) {
+            if (val.is_string()) {
+                post_[key] = val.get<std::string>();
+            } else if (val.is_number()) {
+                post_[key] = std::to_string(val.get<int>());
+            } else if (val.is_boolean()) {
+                post_[key] = val.get<bool>() ? "true" : "false";
+            }
+        }
+    } catch (const json::parse_error& e) {
+        LOG_ERROR("JSON Parse Error: {}", e.what());
     }
 }
 

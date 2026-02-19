@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -23,7 +24,7 @@ public:
     EventLoop() {
         wakeup_fd_ = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);  // 非阻塞和执行时自动关闭
         if (wakeup_fd_ == -1) {
-            perror("eventfd error");
+            LOG_ERROR("eventfd error: {}", std::string(strerror(errno)));
             exit(1);
         }
     }

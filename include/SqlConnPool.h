@@ -2,6 +2,7 @@
 #include <mysql/mysql.h>
 
 #include <atomic>
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -9,6 +10,8 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+
+#include "Log.h"
 
 class SqlConnPool {
 public:
@@ -50,7 +53,7 @@ class SqlConn {
 public:
     SqlConn(MYSQL** sql, SqlConnPool* connpool) {
         if (connpool == nullptr) {
-            throw std::runtime_error("connpool nullptr");
+            LOG_ERROR("connpool nullptr: {}", std::string(strerror(errno)));
         }
         *sql = connpool->GetConn();
         sql_ = *sql;

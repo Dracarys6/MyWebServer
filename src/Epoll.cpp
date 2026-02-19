@@ -5,6 +5,7 @@ void Epoll::Control(int fd, int events, int op) {
     ev.data.fd = fd;
     ev.events = events;
     if (epoll_ctl(epoll_fd_, op, fd, &ev) == -1) {
+        //! 这里不能改为LOG_ERROR 要抛出异常 使await_suspend catch
         throw std::runtime_error("Epoll control error: " + std::string(strerror(errno)));
     }
 }
@@ -25,7 +26,7 @@ std::vector<epoll_event> Epoll::Wait(int timeout) {
         if (errno == EINTR) {  // 被信号中断,不是错误
             return {};
         }
-        throw std::runtime_error("Epoll wait error: " + std::string(strerror(errno)));
+        LOG_ERROR("Epoll wait error: {}", std::string(strerror(errno)));
     }
     // 返回前 nfds 个有效事件
     // 为了性能，我们其实可以直接返回 span 或者引用，但为了简单，这里构造新 vector 返回

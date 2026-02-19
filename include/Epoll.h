@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "Log.h"
+
 // 哪怕是高并发,一次处理1024个就绪事件也够了
 inline const int MAX_EVENTS = 1024;
 
@@ -19,7 +21,7 @@ public:
         // epoll_create1(0)是更新的API,比epoll_create更推荐
         epoll_fd_ = epoll_create1(0);
         if (epoll_fd_ == -1) {
-            throw std::runtime_error("Epoll create error: " + std::string(strerror(errno)));
+            LOG_ERROR("Epoll create error: {}", std::string(strerror(errno)));
         }
     }
 

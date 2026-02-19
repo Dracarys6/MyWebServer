@@ -1,9 +1,12 @@
 #pragma once
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 
 #include "Buffer.h"
+
+using json = nlohmann::json;
 
 class HttpRequest {
 public:
@@ -62,7 +65,10 @@ private:
     void ParsePath() { return; }
 
     // 解析POST (当Content-Type 为 "application/x-www-form-urlencoded" 时说明是 POST 请求)
+    // 或Content-Type 为 "application/json"时 也可能是POST请求,这时使用ParseJson()逻辑
     void ParsePost();
+
+    void ParseJson();
 
     // 把十六进制转字符
     static int ConverHex(char ch);

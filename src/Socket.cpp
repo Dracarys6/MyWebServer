@@ -17,16 +17,16 @@ void Socket::Bind(const std::string& ip, const uint16_t port) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);  // 主机字节序 -> 网络字节序
     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) == -1) {  // ip地址 -> 网络字节序
-        throw std::runtime_error("Invalid IP: " + ip);
+        LOG_ERROR("Invalid IP: {}", ip);
     }
     if (bind(fd_, (sockaddr*)&addr, sizeof(addr)) == -1) {
-        throw std::runtime_error("Bind error: " + std::string(strerror(errno)));
+        LOG_ERROR("Bind error: {}", std::string(strerror(errno)));
     }
 }
 
 void Socket::Listen() {
     if (listen(fd_, SOMAXCONN) == -1)  // 监听最大连接数 128
-        throw std::runtime_error("Listen error" + std::string(strerror(errno)));
+        LOG_ERROR("Listen error: {}", std::string(strerror(errno)));
 }
 
 Socket Socket::Accept() {
@@ -46,10 +46,10 @@ void Socket::Connect(const std::string& ip, const uint16_t port) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) == -1) {  // ip地址 -> 网络字节序
-        throw std::runtime_error("Invalid IP" + ip);
+        LOG_ERROR("Invalid IP: {}", ip);
     }
     if (connect(fd_, (sockaddr*)&addr, sizeof(addr)) == -1) {
-        throw std::runtime_error("Connect error: " + std::string(strerror(errno)));
+        LOG_ERROR("Connect error: {}", std::string(strerror(errno)));
     }
 }
 

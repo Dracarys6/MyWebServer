@@ -1,4 +1,5 @@
 #include <netinet/tcp.h>
+#include <signal.h>
 #include <sys/sendfile.h>  //sendfile
 
 #include <iostream>
@@ -103,7 +104,22 @@ Task<void> HandleClient(Socket client) {
             setsockopt(client.getFd(), IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
 
             if (!keepAlive) {  // 如果是短连接,发完就关
-                break;
+                //* 以下是webbench需要:
+                // 关闭写端，告诉客户端：我数据发完了
+                // 这会向客户端发送 FIN 包
+                shutdown(client.getFd(), SHUT_WR);
+
+                // 尝试读取客户端可能发来的剩余数据（虽然通常没有）
+                // 这是为了让内核完成正常的四次挥手，避免 RST
+                char dummy[1024];
+                while (true) {
+                    int n = read(client.getFd(), dummy, sizeof(dummy));
+                    if (n <= 0) {
+                        // n == 0 代表客户端也关闭了连接 (FIN)
+                        // n == -1 代表出错，不管怎样都可以结束了
+                        break;
+                    }
+                }
             }
 
             // 重置 request 状态，准备处理下一个请求 (Keep-Alive)
@@ -147,6 +163,7 @@ Task<void> Acceptor(Socket& server) {
 }
 
 int main() {
+    signal(SIGPIPE, SIG_IGN);  // webbench需要: 忽略 SIGPIPE 信号，防止进程意外退出
     // 初始化日志(开启异步,队列长度 1024)
     Log::getInstance()->Init(0, "./log", ".log", 1024);
 

@@ -18,6 +18,7 @@
         "Peekend",
         "prependable",
         "pthread",
-        "smod"
+        "smod",
+        "webbench"
     ]
 }

@@ -73,6 +73,7 @@ void HttpResponse::AddStateLine(Buffer& buf) {
 }
 
 void HttpResponse::AddHeader(Buffer& buf) {
+    LOG_DEBUG("response keep-alive: {}", isKeepAlive_);
     buf.Append("Connection: ");
     if (isKeepAlive_) {
         buf.Append("keep-alive\r\n");

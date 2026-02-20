@@ -33,13 +33,13 @@ public:
 
     std::string getPath() const { return path_; }
     std::string getMethod() const { return method_; }
-    std::string getBody() const { return body_; }
     std::string getHeader(const std::string& key) const {
         if (auto it = headers_.find(key); it != headers_.end()) {
             return it->second;
         }
         return "";
     }
+    std::string getBody() const { return body_; }
 
     // 获取 POST 参数
     std::string getPost(const std::string& key) const {
@@ -51,9 +51,10 @@ public:
 
     bool IsKeepAlive() const {
         if (auto it = headers_.find("Connection"); it != headers_.end()) {
-            return it->second == "keep-alive" && version_ == "1.1";
+            return it->second == "keep-alive";
         }
-        return false;
+        // HTTP/1.1 默认 true，HTTP/1.0 默认 false
+        return version_ == "1.1";
     }
 
 private:

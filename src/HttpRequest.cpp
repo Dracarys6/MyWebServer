@@ -87,6 +87,7 @@ void HttpRequest::ParseBody(Buffer& buf) {
         // 检查数据够不够
         if (buf.ReadableBytes() >= len) {
             body_ = buf.RetrieveToStr(len);  // 够了,全部取走
+
             if (headers_["Content-Type"] == "application/json") {
                 ParseJson();
             } else {

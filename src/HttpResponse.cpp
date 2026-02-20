@@ -76,7 +76,7 @@ void HttpResponse::AddHeader(Buffer& buf) {
     buf.Append("Connection: ");
     if (isKeepAlive_) {
         buf.Append("keep-alive\r\n");
-        buf.Append("Keep-Alive: timeout=10, max=500\r\n");
+        buf.Append("Keep-alive: timeout=10, max=500\r\n");
     } else {
         buf.Append("close\r\n");
     }

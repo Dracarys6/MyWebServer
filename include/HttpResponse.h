@@ -24,7 +24,7 @@ public:
             close(fileFd_);
         }
         code_ = code;
-        isKeepAlive = isKeepAlive;
+        isKeepAlive_ = isKeepAlive;
         path_ = path;
         srcDir_ = srcDir;
         fileFd_ = -1;

@@ -164,6 +164,7 @@ Task<void> Acceptor(Socket& server) {
 
 int main() {
     signal(SIGPIPE, SIG_IGN);  // webbench需要: 忽略 SIGPIPE 信号，防止进程意外退出
+
     // 初始化日志(开启异步,队列长度 1024)
     Log::getInstance()->Init(0, "./log", ".log", 1024);
 
@@ -171,6 +172,9 @@ int main() {
     LOG_INFO("Log System Init Success");
     LOG_INFO("Server Start Port: {}", 8080);
     Log::getInstance()->Flush();  // 刷盘
+
+    // 将 fd 限制增加为65535
+    Utils::setRlimit();
 
     // 初始化 Mysql 连接池
     SqlConnPool::getInstance()->Init("localhost", 3306, "root", "20050430", "webserver", 16);

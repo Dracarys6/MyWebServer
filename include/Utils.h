@@ -1,4 +1,5 @@
 #pragma once
+#include <sys/resource.h>
 #include <sys/sendfile.h>
 
 #include <cerrno>
@@ -35,5 +36,18 @@ public:
             LOG_INFO("已传输: {}B, 剩余{}B", sent, remaining);
         }
         return true;
+    }
+
+    static void setRlimit() {
+        // 将文件描述符限制提高到65535
+        struct rlimit rlim;
+        if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+            LOG_ERROR("getrlimit failed");
+        }
+        rlim.rlim_cur = rlim.rlim_max;
+        if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+            LOG_ERROR("setrlimit failed");
+        }
+        LOG_INFO("Set fd limit to 65535");
     }
 };

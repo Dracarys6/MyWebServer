@@ -53,9 +53,10 @@ struct Task {
         }
         return *this;
     }
-    //  析构函数：释放协程句柄
+    // 析构函数：释放协程句柄
     ~Task() {
-        if (handle) handle.destroy();
+        //! Task析构不销毁句柄,不然会段错误
+        // if (handle) handle.destroy();
     }
 
     // 获取返回值

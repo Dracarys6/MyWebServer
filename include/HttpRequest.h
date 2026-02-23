@@ -8,6 +8,9 @@
 
 using json = nlohmann::json;
 
+/**
+ * @brief Http请求类
+ */
 class HttpRequest {
 public:
     HttpRequest() {}

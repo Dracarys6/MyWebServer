@@ -5,6 +5,10 @@
 #include <mutex>
 #include <stdexcept>
 
+/**
+ * @brief 阻塞队列 (使用 条件变量 + 互斥锁 实现)
+ * @tparam T
+ */
 template <typename T>
 class BlockQueue {
 public:

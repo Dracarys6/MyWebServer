@@ -18,6 +18,8 @@
         "Peekend",
         "prependable",
         "pthread",
+        "siftdown",
+        "siftup",
         "smod",
         "webbench"
     ]

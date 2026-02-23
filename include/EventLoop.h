@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Epoll.h"
+#include "Timer.h"
 
 /**
  * @brief EventLoop: 每个线程持有一个
@@ -27,6 +28,7 @@ public:
             LOG_ERROR("eventfd error: {}", std::string(strerror(errno)));
             exit(1);
         }
+        timer_ = std::make_unique<Timer>();
     }
 
     ~EventLoop() { close(wakeup_fd_); }
@@ -58,6 +60,21 @@ public:
         write(wakeup_fd_, &one, sizeof(one));
     }
 
+    // 添加定时任务接口
+    void AddTimer(int id, int timeout, const TimeoutCallBack& callback) {
+        if (timer_ != nullptr) timer_->add(id, timeout, callback);
+    }
+
+    // 更新定时任务
+    void UpdateTimer(int id, int timeout, const TimeoutCallBack& callback) {
+        if (timer_ != nullptr) timer_->adjust(id, timeout, callback);
+    }
+
+    // 删除指定 id(fd) 的定时器
+    void DelTimer(int id) {
+        if (timer_ != nullptr) timer_->del(id);
+    }
+
 private:
     void ExecuteTasks() {
         std::vector<std::function<void()>> temp_tasks;
@@ -77,6 +94,7 @@ private:
     int wakeup_fd_;
     std::mutex mutex_;
     std::vector<std::function<void()>> tasks_;
+    std::unique_ptr<Timer> timer_;
 };
 
 extern thread_local EventLoop* t_loop;  // TLS指针,要写在EventLoop定义之后,不然会报错

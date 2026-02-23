@@ -2,8 +2,6 @@
 
 #include <sstream>
 
-#include "Log.h"
-
 // 核心循环
 void EventLoop::Loop() {
     // 把 wakeup_fd 加入 epoll
@@ -16,8 +14,17 @@ void EventLoop::Loop() {
     LOG_INFO("EventLoop Started in thread {}", id_str);
 
     while (!stop_) {
-        auto events = epoll_.Wait(-1);  // 阻塞等待,直到有fd就绪,释放CPU,不空转
+        //* 1. 获取下一个超时时间 (ms)
+        // 如果没有定时任务，timeout = -1 (无限等待)
+        int timeout = -1;
+        if (timer_ != nullptr) {
+            timeout = timer_->GetNextTick();
+        }
 
+        //* 2. 阻塞等待 IO 事件,最多等 timeout 毫秒
+        auto events = epoll_.Wait(timeout);  // 阻塞等待,直到有fd就绪,释放CPU,不空转
+
+        //* 3. 处理 IO 事件
         for (auto& ev : events) {
             if (ev.data.fd == wakeup_fd_) {
                 // 如果是唤醒事件,读一下 buffer 清空
@@ -37,6 +44,11 @@ void EventLoop::Loop() {
                     handle.resume();  // 唤醒协程
                 }
             }
+        }
+
+        //* 4. 处理定时器超时
+        if (timer_ != nullptr) {
+            timer_->tick();
         }
     }
 }

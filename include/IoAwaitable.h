@@ -9,7 +9,6 @@
 
 /**
  * @brief 等待体：用于 co_await socket.read()
- *
  */
 struct IoAwaitable {
     int fd;

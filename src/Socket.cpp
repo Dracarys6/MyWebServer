@@ -25,7 +25,7 @@ void Socket::Bind(const std::string& ip, const uint16_t port) {
 }
 
 void Socket::Listen() {
-    if (listen(fd_, SOMAXCONN) == -1)  // 监听最大连接数 128
+    if (listen(fd_, SOMAXCONN) == -1)  // 监听最大连接数 4096
         LOG_ERROR("Listen error: {}", std::string(strerror(errno)));
 }
 
@@ -34,8 +34,8 @@ Socket Socket::Accept() {
     socklen_t len = sizeof(addr);
     int client_fd = accept(fd_, (sockaddr*)&addr, &len);
     if (client_fd == -1) {
-        // todo: 后续配合协程修改
         // 目前如果是非阻塞且无连接,会抛异常或返回无效Socket,我们在上层处理
+        LOG_ERROR("Accept:invalid client_fd");
         return Socket(-1);
     }
     return Socket(client_fd);

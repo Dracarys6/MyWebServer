@@ -8,6 +8,9 @@
 
 #include "Buffer.h"
 
+/**
+ * @brief Http响应类
+ */
 class HttpResponse {
 public:
     HttpResponse() : code_(-1), path_(""), srcDir_(""), fileFd_(-1), isKeepAlive_(false) {}

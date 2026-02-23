@@ -22,7 +22,7 @@ public:
             if (sent == -1) {
                 if (errno == EINTR)
                     continue;
-                else if (errno == EPIPE) {
+                else if (errno == EPIPE) {  //客户端关闭或重置
                     LOG_ERROR("客户端断开连接");
                     break;
                 } else {

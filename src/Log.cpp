@@ -72,7 +72,6 @@ void Log::FlushLogThread() { Log::getInstance()->AsyncWrite(); }
 void Log::AsyncWrite() {
     std::string str;
     // 循环从队列取日志
-    int count = 0;
     while (deque_->pop(str)) {
         std::lock_guard<std::mutex> lock(mutex_);
         fputs(str.c_str(), fp_);

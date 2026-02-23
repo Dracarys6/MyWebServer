@@ -20,6 +20,7 @@ set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/HttpResponse.cpp
     ${PROJECT_SOURCE_DIR}/src/SqlConnPool.cpp
     ${PROJECT_SOURCE_DIR}/src/Log.cpp
+    ${PROJECT_SOURCE_DIR}/src/Timer.cpp
 )
 
 # 强制 fmt 用 header-only 模式

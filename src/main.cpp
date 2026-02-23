@@ -25,21 +25,34 @@ Task<void> HandleClient(Socket client) {
     Buffer readBuffer;
     HttpRequest request;
     HttpResponse response;
+    const int client_fd = client.getFd();
 
-    // TODO:增加超时机制
-    // client.SetTimeOut(5000);  //5秒无数据自动断开
+    auto timeoutCb = [client_fd]() {
+        LOG_INFO("Client {} Timeout, closing...", client_fd);
+        // 关闭文件描述符,这将导致 epoll_wait 返回错误或 read 返回 -1, 从而唤醒协程
+        shutdown(client_fd, SHUT_RDWR);
+    };
 
     while (true) {
+        //* 添加/更新定时器 (比如10s超时)
+        if (t_loop != nullptr) {
+            t_loop->UpdateTimer(client_fd, 10000, timeoutCb);
+        }
+
         //* 协程挂起,等待数据读入 Buffer
         ssize_t n = co_await client.Read(readBuffer);
-        if (n <= 0) break;  // 简化处理,对端关闭或超时 直接关闭连接
+
+        // *对端关闭或超时 直接退出循环,销毁协程
+        if (n <= 0) {
+            break;
+        }
 
         //* 循环处理 Buffer 中的请求
         while (request.Parse(readBuffer)) {
             //* 处理业务逻辑
             std::string path = request.getPath();
             //! 拦截API请求
-            //* Mysql 登录
+            // Mysql 登录
             if (path == "/login" && request.getMethod() == "POST") {
                 std::string user = request.getPost("user");
                 std::string pwd = request.getPost("pwd");
@@ -82,38 +95,38 @@ Task<void> HandleClient(Socket client) {
 
             //* 生成响应数据
             Buffer headerBuffer;
-            response.MakeResponse(headerBuffer, client.getFd());
+            response.MakeResponse(headerBuffer, client_fd);
 
             //* 发送响应
             // 发送前开启,TCP_CORK优化,避免 Header 和 Body 分成两个 TCP 包发
             int on = 1;
-            setsockopt(client.getFd(), IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
+            setsockopt(client_fd, IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
 
             // 先发送Header
             // TODO: 改为异步write
-            write(client.getFd(), headerBuffer.Peek(), headerBuffer.ReadableBytes());
+            write(client_fd, headerBuffer.Peek(), headerBuffer.ReadableBytes());
 
             // 如果是静态文件文件,使用 sendfile 发送 Body
             if (response.getFileFd() != -1 && response.getCode() == 200) {
-                if (Utils::SendFile(client.getFd(), response.getFileFd(), response.getFileSize()))
+                if (Utils::SendFile(client_fd, response.getFileFd(), response.getFileSize()))
                     LOG_INFO("SendFile 传输成功");
             }
 
             // 发送完关闭 CORK,强制刷出数据
             int off = 0;
-            setsockopt(client.getFd(), IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
+            setsockopt(client_fd, IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
 
             if (!keepAlive) {  // 如果是短连接,发完就关
                 //* 以下是webbench需要:
                 // 关闭写端，告诉客户端：我数据发完了
                 // 这会向客户端发送 FIN 包
-                shutdown(client.getFd(), SHUT_WR);
+                shutdown(client_fd, SHUT_WR);
 
                 // 尝试读取客户端可能发来的剩余数据（虽然通常没有）
                 // 这是为了让内核完成正常的四次挥手，避免 RST
                 char dummy[1024];
                 while (true) {
-                    int n = read(client.getFd(), dummy, sizeof(dummy));
+                    int n = read(client_fd, dummy, sizeof(dummy));
                     if (n <= 0) {
                         // n == 0 代表客户端也关闭了连接 (FIN)
                         // n == -1 代表出错，不管怎样都可以结束了
@@ -126,6 +139,10 @@ Task<void> HandleClient(Socket client) {
             request.Init();
         }
         //* 协程结束，Task 析构，client 析构，连接关闭
+        // 移除定时器
+        if (t_loop != nullptr) {
+            t_loop->DelTimer(client_fd);
+        }
     }
 }
 
@@ -166,7 +183,7 @@ int main() {
     signal(SIGPIPE, SIG_IGN);  // webbench需要: 忽略 SIGPIPE 信号，防止进程意外退出
 
     // 初始化日志(开启异步,队列长度 1024)
-    Log::getInstance()->Init(0, "./log", ".log", 1024);
+    Log::getInstance()->Init(3, "./log", ".log", 1024);
 
     LOG_INFO("========== Server Start ==========");
     LOG_INFO("Log System Init Success");

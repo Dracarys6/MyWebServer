@@ -16,13 +16,13 @@
 📊 性能压测 / Benchmark
 - 测试环境：Ubuntu 20.04(wsl2) R5-5600(12 Core CPU) 32GB RAM
 - 测试工具：Webbench
-- 压测结果：在 60 秒内进行满负荷高并发压测，成功稳定支撑 28000+ 并发连接，QPS达到 2500+ 且响应延迟极低，无由于资源耗尽导致的失败请求。
+- 压测结果：在 60 秒内进行满负荷高并发压测，成功稳定支撑 28000+ 并发连接，QPS约为 2500 且响应延迟极低，无由于资源耗尽导致的失败请求。
 
-$ webbench -c 28000 -t 30 http://localhost:8080/
+$ webbench -c 28000 -t 60 http://localhost:8080/
 Webbench - Simple Web Benchmark 1.5
-Running info: 28000 clients, running 30 sec.
-Speed=168844 pages/min, 413667 bytes/sec.
-Requests: 84422 succeed, 0 failed.
+Running info: 28000 clients, running 60 sec.
+Speed=140721 pages/min, 317426 bytes/sec.
+Requests: 140721 susceed, 0 failed.
 
 🛠️ 环境要求 / Requirements
 - OS: Linux (推荐 Ubuntu 20.04 及以上)

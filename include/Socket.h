@@ -74,6 +74,8 @@ public:
 
     void Connect(const std::string& ip, const uint16_t port);
 
+    void Release() { fd_ = -1; }
+
     // 关键配置
     void SetNonBlocking();  // 设置非阻塞
     void SetReuseAddr();    // 设置地址复用
@@ -99,14 +101,22 @@ public:
             }
 
             ssize_t await_resume() {
+                // 彻底抽干内核缓冲区,防止频繁挂起,恢复
                 // 使用 Buffer::ReadFd 进行分散读
-                int savedErrno = 0;
-                ssize_t n = buf.ReadFd(fd, &savedErrno);
-                if (n < 0 && savedErrno == EAGAIN) {
-                    // ET 模式下没数据了,不算错
-                    return 0;
+                ssize_t total_read = 0;
+                while (true) {
+                    int savedErrno = 0;
+                    ssize_t n = buf.ReadFd(fd, &savedErrno);
+                    if (n > 0) {
+                        total_read += n;
+                    } else if (n == -1 && savedErrno == EAGAIN) {
+                        break;  // 抽干了
+                    } else {
+                        if (total_read == 0) return n;  // 真正的错误或EOF
+                        break;
+                    }
                 }
-                return n;
+                return total_read;
             }
         };
         return ReadAwaitable{fd_, buffer};

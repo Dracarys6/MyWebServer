@@ -29,10 +29,9 @@ add_compile_definitions(FMT_HEADER_ONLY)
 # 先定义可执行目标（必须在前）
 add_executable(server ${SOURCES})
 
-# 调试阶段核心：-O0 关闭优化 + -g 调试信息
 target_compile_options(server PRIVATE
-    -g            # 调试信息，gdb必备
-    -O0           # 关闭优化，保证调试行号/变量准确，调试阶段绝不用O2/O3
+    -g            # 调试信息
+    -O3         
     -fcoroutines  # GCC C++20协程支持
     -Wall         # 开启所有警告，提前发现空指针/未初始化变量等问题
 )

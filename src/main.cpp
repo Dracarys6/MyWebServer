@@ -169,21 +169,18 @@ Task<void> Acceptor(Socket& server) {
         co_await server.Read(buf);  // 挂起  只要等待事件,不读数据 awaiter是封装的可等待对象(read版)
         // 从 co_await 醒来(调度器EventLoop调用resume)说明有连接
         Socket client = server.Accept();
-        if (client.getFd() >= 0) {
-            LOG_INFO("New Connection: {} -> Dispatch to Worker {}", client.getFd(), next_worker);
-            client.SetNonBlocking();
+        int client_fd = client.getFd();
+        //! 注意：释放 client 对象对 fd 的所有权，防止析构时 close
+        client.Release();
+        if (client_fd >= 0) {
+            LOG_INFO("New Connection: {} -> Dispatch to Worker {}", client_fd, next_worker);
             // 关键：把 Socket 移动到 Worker 线程去处理
-            // 这里不能直接 HandleClient(client)，因为那会在主线程跑。
             // 启动处理协程
-            auto client_ptr = std::make_shared<Socket>(std::move(client));
-            workers[next_worker]->getLoop()->RunInLoop([client_ptr]() {
-                // 这个 lambda 会在 Worker 线程里执行
-                // 1. 设置 TLS (Worker 线程自己已经设了，双保险)
-                // 2. 启动协程
-                // 重新把指针转回对象
-                Socket client(std::move(*client_ptr));
-
-                HandleClient(std::move(client));
+            workers[next_worker]->getLoop()->RunInLoop([client_fd]() {
+                // 在子线程重新包装成 Socket
+                Socket c(client_fd);
+                c.SetNonBlocking();
+                HandleClient(std::move(c));
             });
 
             // 轮询下一个

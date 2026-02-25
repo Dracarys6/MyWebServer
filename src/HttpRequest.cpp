@@ -1,7 +1,5 @@
 #include "HttpRequest.h"
 
-#include <regex>
-
 #include "Log.h"
 
 bool HttpRequest::Parse(Buffer& buf) {
@@ -51,32 +49,34 @@ bool HttpRequest::Parse(Buffer& buf) {
 }
 
 bool HttpRequest::ParseRequestLine(const std::string& line) {
-    // 正则匹配: GET /index.html HTTP/1.1
-    std::regex pattern("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
-    std::smatch subMatch;
-    if (std::regex_match(line, subMatch, pattern)) {
-        method_ = subMatch[1];
-        path_ = subMatch[2];
-        version_ = subMatch[3];
-        state_ = HEADERS;
-        return true;
-    }
-    return false;
+    // GET /index.html HTTP/1.1
+    size_t pos1 = line.find(' ');
+    if (pos1 == std::string::npos) return false;
+    method_ = line.substr(0, pos1);
+
+    size_t pos2 = line.find(' ', pos1 + 1);
+    if (pos2 == std::string::npos) return false;
+    path_ = line.substr(pos1 + 1, pos2 - pos1 - 1);
+
+    version_ = line.substr(pos2 + 1);
+    state_ = HEADERS;
+    return true;
 }
 
 void HttpRequest::ParseHeaders(const std::string& line) {
-    std::regex pattern("^([^:]*): ?(.*)$");
-    std::smatch subMatch;
-    if (std::regex_match(line, subMatch, pattern)) {
-        headers_[subMatch[1]] = subMatch[2];
-    } else if (line.empty()) {
-        // 遇到空行,Headers结束
-        // 关键点：根据 Method 和 Content-Length 决定下一个状态
-        if (method_ == "POST" && headers_.count("Content-Length"))
-            state_ = BODY;
-        else
-            state_ = FINISH;
+    if (line.empty()) {
+        state_ = (method_ == "POST") ? BODY : FINISH;
+        return;
     }
+    size_t pos = line.find(':');
+    if (pos == std::string::npos) return;
+
+    std::string key = line.substr(0, pos);
+    // 去除 value 前面的空格
+    size_t val_start = pos + 1;
+    while (val_start < line.size() && line[val_start] == ' ') val_start++;
+
+    headers_[key] = line.substr(val_start);
 }
 
 void HttpRequest::ParseBody(Buffer& buf) {

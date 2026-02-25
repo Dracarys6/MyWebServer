@@ -14,6 +14,7 @@ void EventLoop::Loop() {
     LOG_INFO("EventLoop Started in thread {}", id_str);
 
     while (!stop_) {
+        is_sleeping_ = true;  // 睡前标记
         //* 1. 获取下一个超时时间 (ms)
         // 如果没有定时任务，timeout = -1 (无限等待)
         int timeout = -1;
@@ -23,6 +24,8 @@ void EventLoop::Loop() {
 
         //* 2. 阻塞等待 IO 事件,最多等 timeout 毫秒
         auto events = epoll_.Wait(timeout);  // 阻塞等待,直到有fd就绪,释放CPU,不空转
+
+        is_sleeping_ = false;  // 醒来标记
 
         //* 3. 处理 IO 事件
         for (auto& ev : events) {
@@ -59,5 +62,8 @@ void EventLoop::RunInLoop(std::function<void()> task) {  // 包装成统一对�
         std::lock_guard<std::mutex> lock(mutex_);
         tasks_.push_back(task);
     }
-    WakeUp();
+    // 只有子线程在睡觉时,才需要叫醒!
+    if (is_sleeping_.load(std::memory_order_relaxed)) {
+        WakeUp();
+    }
 }

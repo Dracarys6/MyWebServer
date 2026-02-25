@@ -94,6 +94,7 @@ private:
     int wakeup_fd_;
     std::mutex mutex_;
     std::vector<std::function<void()>> tasks_;
+    std::atomic<bool> is_sleeping_{false};
     std::unique_ptr<Timer> timer_;
 };
 

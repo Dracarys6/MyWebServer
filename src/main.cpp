@@ -166,8 +166,7 @@ Task<void> Acceptor(Socket& server) {
     LOG_INFO("Acceptor started");
     while (true) {
         Buffer buf;
-        auto awaiter = server.Read(buf);  // 只要等待事件,不读数据
-        co_await awaiter;                 // 挂起 awaiter是封装的可等待对象(read版)
+        co_await server.Read(buf);  // 挂起  只要等待事件,不读数据 awaiter是封装的可等待对象(read版)
         // 从 co_await 醒来(调度器EventLoop调用resume)说明有连接
         Socket client = server.Accept();
         if (client.getFd() >= 0) {

@@ -87,7 +87,7 @@ public:
             bool await_ready() { return false; }  // 总是挂起
 
             void await_suspend(std::coroutine_handle<> hd) {
-                // 注册 EPOLLIN | EPOLLET
+                //* 注册 EPOLLIN | EPOLLET
                 if (t_loop) {
                     t_loop->WaitFor(fd, hd);
                     try {
@@ -112,37 +112,36 @@ public:
         return ReadAwaitable{fd_, buffer};
     }
 
-    // TODO: 待完善封装 Write 方法
-    auto Write(Buffer& buffer) {
-        // 定义内部结构体来实现 Write 的 Awaitable
+    auto Write(const void* data, size_t len) {
         struct WriteAwaitable {
             int fd;
-            Buffer& buf;
+            const void* data;
+            size_t len;
 
             bool await_ready() { return false; }  // 总是挂起
 
             void await_suspend(std::coroutine_handle<> hd) {
-                // 注册 EPOLLIN | EPOLLET
+                //* 注册 EPOLLOUT(可写) | EPOLLET
                 if (t_loop != nullptr) {
                     t_loop->WaitFor(fd, hd);
                     try {
-                        t_loop->GetEpoll().Mod(fd, EPOLLIN | EPOLLET);
+                        t_loop->GetEpoll().Mod(fd, EPOLLOUT | EPOLLET);
                     } catch (...) {
-                        t_loop->GetEpoll().Add(fd, EPOLLIN | EPOLLET);
+                        t_loop->GetEpoll().Add(fd, EPOLLOUT | EPOLLET);
                     }
                 }
             }
 
             ssize_t await_resume() {
-                ssize_t n = write(fd, buf.Writable(), buf.WritableBytes());
-                if (n < 0) {
-                    return 0;
-                }
+                ssize_t n = ::send(fd, data, len, 0);
                 return n;
             }
         };
-        return WriteAwaitable{fd_, buffer};
+        return WriteAwaitable{fd_, data, len};
     }
+
+    // 重载版本：支持 Buffer
+    auto Write(Buffer& buffer) { return Write(buffer.Peek(), buffer.ReadableBytes()); }
 
 private:
     int fd_;

@@ -35,7 +35,6 @@ bool HttpRequest::Parse(Buffer& buf) {
             case REQUEST_LINE:
                 if (!ParseRequestLine(line))
                     return false;  // 请求头不对,提前退出状态机,避免继续循环
-                ParsePath();       // TODO:处理 URL 里的参数
                 break;
             case HEADERS:
                 ParseHeaders(line);

@@ -20,20 +20,18 @@ public:
             sent = sendfile(outFd, inFd, &offset, remaining);
             // 处理错误: EINTR 是被信号中断,可重试; EPIPE 是客户端断开
             if (sent == -1) {
-                if (errno == EINTR)
-                    continue;
-                else if (errno == EPIPE) {  //客户端关闭或重置
-                    LOG_ERROR("客户端断开连接");
-                    break;
+                if (errno == EINTR) continue;
+                if (errno == EPIPE || errno == ECONNRESET) {
+                    LOG_WARN("Client disconnected (EPIPE)");
                 } else {
-                    LOG_ERROR("传输失败: {}", strerror(errno));
-                    return false;
+                    LOG_ERROR("sendfile failed: {}", strerror(errno));
                 }
+                return false;
             } else if (sent == 0) {
                 return true;
             }
             remaining -= sent;
-            LOG_INFO("已传输: {}B, 剩余{}B", sent, remaining);
+            LOG_INFO("[Sendfile]已传输Body: {}B, 剩余{}B", sent, remaining);
         }
         return true;
     }

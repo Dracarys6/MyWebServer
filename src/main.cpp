@@ -103,8 +103,22 @@ Task<void> HandleClient(Socket client) {
             setsockopt(client_fd, IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
 
             // 先发送Header
-            // TODO: 改为异步write
-            write(client_fd, headerBuffer.Peek(), headerBuffer.ReadableBytes());
+            // 异步write 发送循环
+            size_t total = headerBuffer.ReadableBytes();
+            size_t sent = 0;
+            while (sent < total) {
+                ssize_t n = co_await client.Write(headerBuffer.Peek() + sent, total - sent);
+                if (n == -1) {
+                    if (errno == EPIPE || errno == ECONNRESET) {
+                        LOG_WARN("Client {} disconnected (EPIPE)", client_fd);
+                    } else {
+                        LOG_ERROR("Write failed: {}", strerror(errno));
+                    }
+                    break;
+                }
+                sent += n;
+                LOG_INFO("[AsyncWrite]已传输Header: {}B, 剩余{}B", sent, total - sent);
+            }
 
             // 如果是静态文件文件,使用 sendfile 发送 Body
             if (response.getFileFd() != -1 && response.getCode() == 200) {

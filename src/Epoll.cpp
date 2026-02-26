@@ -5,7 +5,7 @@ void Epoll::Control(int fd, int events, int op) {
     ev.data.fd = fd;
     ev.events = events;
     if (epoll_ctl(epoll_fd_, op, fd, &ev) == -1) {
-        //! 这里不能改为LOG_ERROR 要抛出异常 使await_suspend catch
+        //! 这里必须要抛出异常 使await_suspend catch
         throw std::runtime_error("Epoll control error: " + std::string(strerror(errno)));
     }
 }

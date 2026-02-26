@@ -31,7 +31,7 @@ add_executable(server ${SOURCES})
 
 target_compile_options(server PRIVATE
     -g            # 调试信息
-    -O3         
+    -O3      
     -fcoroutines  # GCC C++20协程支持
     -Wall         # 开启所有警告，提前发现空指针/未初始化变量等问题
 )

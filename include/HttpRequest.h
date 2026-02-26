@@ -2,6 +2,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "Buffer.h"
@@ -24,9 +25,9 @@ public:
 
     void Init() {
         state_ = REQUEST_LINE;
-        method_.clear();
-        path_.clear();
-        version_.clear();
+        method_ = "";
+        path_ = "";
+        version_ = "";
         body_.clear();
         headers_.clear();
     }
@@ -34,9 +35,9 @@ public:
     // 状态机: 解析 Buffer 中的数据,返回 true 表示解析成功（至少完成了一个请求）
     bool Parse(Buffer& buf);
 
-    std::string getPath() const { return path_; }
-    std::string getMethod() const { return method_; }
-    std::string getHeader(const std::string& key) const {
+    std::string_view getPath() const { return path_; }
+    std::string_view getMethod() const { return method_; }
+    std::string_view getHeader(const std::string& key) const {
         if (auto it = headers_.find(key); it != headers_.end()) {
             return it->second;
         }
@@ -62,7 +63,7 @@ public:
 
 private:
     // http报文
-    bool ParseRequestLine(const std::string& line);
+    bool ParseRequestLine(const std::string_view& line);
     void ParseHeaders(const std::string& line);
     void ParseBody(Buffer& buf);
 
@@ -78,10 +79,10 @@ private:
     static int ConverHex(char ch);
 
     ParseState state_{REQUEST_LINE};
-    std::string method_{};
-    std::string path_{};
-    std::string version_{};
+    std::string_view method_{};
+    std::string_view path_{};
+    std::string_view version_{};
     std::string body_{};
-    std::unordered_map<std::string, std::string> headers_{};
+    std::unordered_map<std::string_view, std::string_view> headers_{};
     std::unordered_map<std::string, std::string> post_{};
 };

@@ -48,14 +48,14 @@ bool HttpRequest::Parse(Buffer& buf) {
     return state_ == FINISH;
 }
 
-bool HttpRequest::ParseRequestLine(const std::string& line) {
+bool HttpRequest::ParseRequestLine(const std::string_view& line) {
     // GET /index.html HTTP/1.1
     size_t pos1 = line.find(' ');
-    if (pos1 == std::string::npos) return false;
+    if (pos1 == std::string_view::npos) return false;
     method_ = line.substr(0, pos1);
 
     size_t pos2 = line.find(' ', pos1 + 1);
-    if (pos2 == std::string::npos) return false;
+    if (pos2 == std::string_view::npos) return false;
     path_ = line.substr(pos1 + 1, pos2 - pos1 - 1);
 
     version_ = line.substr(pos2 + 1);
@@ -82,7 +82,7 @@ void HttpRequest::ParseHeaders(const std::string& line) {
 void HttpRequest::ParseBody(Buffer& buf) {
     size_t len = 0;
     if (auto it = headers_.find("Content-Length"); it != headers_.end()) {
-        len = std::stoull(it->second);
+        len = std::stoull(std::string(it->second));
         // 检查数据够不够
         if (buf.ReadableBytes() >= len) {
             body_ = buf.RetrieveToStr(len);  // 够了,全部取走

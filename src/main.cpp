@@ -50,7 +50,7 @@ Task<void> HandleClient(Socket client) {
         //* 循环处理 Buffer 中的请求
         while (request.Parse(readBuffer)) {
             //* 处理业务逻辑
-            std::string path = request.getPath();
+            std::string_view path = request.getPath();
             //! 拦截API请求
             // Mysql 登录
             if (path == "/login" && request.getMethod() == "POST") {
@@ -91,7 +91,8 @@ Task<void> HandleClient(Socket client) {
 
             //* 初始化响应
             bool keepAlive = request.IsKeepAlive();
-            response.Init("../resources", path, keepAlive, 200);
+            std::string path1 = std::string(path);
+            response.Init("../resources", path1, keepAlive, 200);
 
             //* 生成响应数据
             Buffer headerBuffer;
@@ -206,8 +207,12 @@ int main() {
     // 初始化 Mysql 连接池
     SqlConnPool::getInstance()->Init("localhost", 3306, "root", "20050430", "webserver", 16);
 
-    // 启动 4 个 Worker
-    for (int i = 0; i < 4; ++i) {
+    // 启动 thread_num 个 Worker
+    const int core_num = std::thread::hardware_concurrency();  // 获取CPU核心数
+    const int thread_num = core_num;
+    LOG_INFO("Core num: {}", core_num);
+    LOG_INFO("Worker Thread num: {}", thread_num);
+    for (int i = 0; i < thread_num; ++i) {
         workers.push_back(std::make_unique<Worker>());
     }
     // 启动 server
